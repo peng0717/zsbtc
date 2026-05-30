@@ -2,7 +2,9 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const multer = require('multer');
+// multer 在 Vercel serverless 不可用（无持久磁盘），本地开发时取消注释
+let multer = null;
+try { multer = require('multer'); } catch (e) { console.log('multer 不可用（Vercel 环境）'); }
 const fs = require('fs');
 const path = require('path');
 
@@ -154,14 +156,17 @@ async function initDB() {
 // 确保上传目录存在（Vercel环境跳过）
 try { if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR); } catch(e) { console.log('上传目录跳过（Vercel环境下正常）'); }
 
-const storage = multer.diskStorage({
-  destination: UPLOAD_DIR,
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, Date.now() + '-' + Math.round(Math.random() * 1e9) + ext);
-  }
-});
-const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+let upload = null;
+if (multer) {
+  const storage = multer.diskStorage({
+    destination: UPLOAD_DIR,
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, Date.now() + '-' + Math.round(Math.random() * 1e9) + ext);
+    }
+  });
+  upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+}
 
 app.use(cors());
 app.use(express.json());
@@ -575,11 +580,13 @@ app.put('/api/borrows/:id/return', authMiddleware, requireAdmin, async (req, res
 // ========== 文件上传 ==========
 
 // POST /api/upload
+if (upload) {
 app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
   if (!req.file) return res.json({ success: false, message: '请选择图片' });
   const url = `/uploads/${req.file.filename}`;
   return res.json({ success: true, data: { url } });
 });
+}
 
 // ========== 启动 ==========
 // Vercel serverless: 懒初始化，避免冷启动崩溃
