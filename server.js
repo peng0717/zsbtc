@@ -589,12 +589,13 @@ app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
 }
 
 // ========== 启动 ==========
-// Vercel serverless: 懒初始化，避免冷启动崩溃
-let dbReady = initDB();
-dbReady.catch(err => {
-  console.error('数据库初始化失败:', err);
-  if (!process.env.VERCEL) process.exit(1);
-});
+// Vercel serverless: 暂不初始化，排查崩溃原因
+let dbReady = Promise.resolve();
+// let dbReady = initDB();
+// dbReady.catch(err => {
+//   console.error('数据库初始化失败:', err);
+//   if (!process.env.VERCEL) process.exit(1);
+// });
 
 // 数据库就绪中间件（health 端点除外）
 app.use('/api', (req, res, next) => {
