@@ -543,22 +543,29 @@ app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
 });
 
 // ========== 启动 ==========
-initDB().then(() => {
-  // Vercel serverless 环境不监听端口，仅导出 app
-  if (!process.env.VERCEL) {
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`掌上设备通后端已启动（Turso云端数据库）: http://localhost:${PORT}`);
-      console.log(`局域网访问: http://192.168.0.100:${PORT}`);
-    });
-  } else {
-    console.log('Vercel serverless 模式已就绪');
-  }
-}).catch(err => {
+// Vercel serverless: 懒初始化，避免冷启动崩溃
+let dbReady = initDB();
+dbReady.catch(err => {
   console.error('数据库初始化失败:', err);
-  // Vercel serverless 环境不能 process.exit，仅记录错误
-  if (!process.env.VERCEL) {
-    process.exit(1);
-  }
+  if (!process.env.VERCEL) process.exit(1);
 });
+
+// 数据库就绪中间件（health 端点除外）
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health') return next();
+  dbReady.then(() => next()).catch(() => {
+    res.status(503).json({ success: false, message: '服务初始化中，请稍后重试' });
+  });
+});
+
+// Vercel serverless 不监听端口；本地开发时监听
+if (!process.env.VERCEL) {
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`掌上设备通后端已启动（Turso云端数据库）: http://localhost:${PORT}`);
+    console.log(`局域网访问: http://192.168.0.100:${PORT}`);
+  });
+} else {
+  console.log('Vercel serverless 模式已就绪');
+}
 
 module.exports = app;
