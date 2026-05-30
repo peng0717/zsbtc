@@ -112,8 +112,8 @@ async function initDB() {
   }
 }
 
-// 确保上传目录存在
-if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+// 确保上传目录存在（Vercel环境跳过）
+try { if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR); } catch(e) { console.log('上传目录跳过（Vercel环境下正常）'); }
 
 const storage = multer.diskStorage({
   destination: UPLOAD_DIR,
@@ -539,11 +539,18 @@ app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
 
 // ========== 启动 ==========
 initDB().then(() => {
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`掌上设备通后端已启动（Turso云端数据库）: http://localhost:${PORT}`);
-    console.log(`局域网访问: http://192.168.0.100:${PORT}`);
-  });
+  // Vercel serverless 环境不监听端口，仅导出 app
+  if (!process.env.VERCEL) {
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`掌上设备通后端已启动（Turso云端数据库）: http://localhost:${PORT}`);
+      console.log(`局域网访问: http://192.168.0.100:${PORT}`);
+    });
+  } else {
+    console.log('Vercel serverless 模式已就绪');
+  }
 }).catch(err => {
   console.error('数据库初始化失败:', err);
   process.exit(1);
 });
+
+module.exports = app;
