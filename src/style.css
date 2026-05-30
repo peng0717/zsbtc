@@ -1,0 +1,229 @@
+:root {
+  /* === 主色调 - 学院蓝 === */
+  --primary: #1e5dc9;
+  --primary-dark: #0e3370;
+  --primary-light: #ecf3fd;
+  --primary-soft: #f5f8ff;
+
+  /* === 功能色 === */
+  --success: #1a7f3e;
+  --success-bg: #e8f5eb;
+  --warning: #b85c00;
+  --warning-bg: #fef3e6;
+  --danger: #c92a2a;
+  --danger-bg: #fef0f0;
+  --info: #1e5dc9;
+
+  /* === 中性色 === */
+  --bg: #f4f5f8;
+  --surface: #ffffff;
+  --text: #1a1a28;
+  --text-secondary: #545466;
+  --text-hint: #9090a2;
+  --border: #e4e5ec;
+  --divider: #f0f1f5;
+
+  /* === 圆角 === */
+  --radius-lg: 14px;
+  --radius: 10px;
+  --radius-sm: 8px;
+
+  /* === 阴影 === */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow: 0 2px 8px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.07);
+  --shadow-primary: 0 4px 14px rgba(30,93,201,0.18);
+
+  /* === 字体 === */
+  --font: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Consolas", monospace;
+
+  /* === 过渡 === */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+  /* === Vant 组件变量覆盖 === */
+  --van-primary-color: var(--primary);
+  --van-success-color: var(--success);
+  --van-warning-color: var(--warning);
+  --van-danger-color: var(--danger);
+
+  --van-nav-bar-background: var(--surface);
+  --van-nav-bar-title-text-color: var(--text);
+  --van-nav-bar-icon-color: var(--text);
+  --van-nav-bar-text-color: var(--primary);
+
+  --van-tabbar-background: var(--surface);
+  --van-tabbar-item-active-color: var(--primary);
+  --van-tabbar-item-text-color: var(--text-hint);
+  --van-tabbar-height: 52px;
+
+  --van-button-primary-background: var(--primary);
+  --van-button-primary-border-color: var(--primary);
+  --van-button-default-color: var(--text);
+  --van-button-default-border-color: var(--border);
+  --van-button-border-radius: 10px;
+  --van-button-small-border-radius: 8px;
+
+  --van-search-background: var(--surface);
+  --van-search-padding: 12px 16px;
+
+  --van-card-background: var(--surface);
+  --van-card-radius: var(--radius);
+
+  --van-cell-background: var(--surface);
+  --van-cell-font-size: 15px;
+  --van-cell-line-height: 22px;
+  --van-cell-value-color: var(--text-secondary);
+
+  --van-tag-border-radius: 4px;
+
+  --van-tab-font-size: 15px;
+  --van-tab-active-text-color: var(--primary);
+  --van-tabs-bottom-bar-color: var(--primary);
+  --van-tabs-line-height: 44px;
+
+  --van-dialog-border-radius: 16px;
+
+  --van-popup-round-border-radius: 18px;
+
+  --van-padding-base: 4px;
+  --van-padding-xs: 8px;
+  --van-padding-sm: 12px;
+  --van-padding-md: 16px;
+  --van-padding-lg: 24px;
+}
+
+/* === 全局重置 === */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent !important; -webkit-user-select: none; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+#app { min-height: 100vh; }
+
+/* === 导航栏 === */
+.van-nav-bar {
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+.van-nav-bar__title {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+.van-nav-bar .van-button--small {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+/* === 搜索栏 === */
+.van-search { padding: 10px 16px !important; }
+.van-search__content {
+  border-radius: 24px !important;
+  background: var(--bg) !important;
+  border: 1px solid var(--border);
+  transition: border-color 0.2s var(--ease), box-shadow 0.2s var(--ease);
+}
+.van-search__content:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(30,93,201,0.08);
+}
+
+/* === TabBar === */
+.van-tabbar {
+  border-top: 1px solid var(--border);
+  box-shadow: 0 -1px 4px rgba(0,0,0,0.03);
+}
+.van-tabbar-item { font-size: 11px; }
+.van-tabbar-item--active { font-weight: 600; }
+
+/* === 按钮 === */
+.van-button--primary {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(30,93,201,0.2);
+  transition: all 0.15s var(--ease);
+}
+.van-button--primary:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(30,93,201,0.15);
+  transition: transform 0.1s;
+}
+.van-button--default:active { transform: scale(0.98); }
+.van-button { box-shadow: none !important; outline: none !important; }
+
+/* === 标签 === */
+.van-tag { font-weight: 500; }
+
+/* === 字段 === */
+.van-cell-group { margin: 12px 16px; border-radius: var(--radius); overflow: hidden; }
+.van-cell { padding: 12px 16px; }
+
+/* === 卡片 === */
+.van-card {
+  padding: 12px !important;
+}
+.van-card__thumb {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* === 弹窗 === */
+.van-dialog__header {
+  font-weight: 600;
+  font-size: 17px;
+  padding-top: 20px;
+}
+.van-dialog__content .van-field {
+  background: var(--bg);
+  border-radius: 8px;
+  margin: 6px 0;
+}
+
+/* === 空状态 === */
+.van-empty { padding: 48px 0; }
+.van-empty__description { color: var(--text-hint); }
+
+/* === 加载 === */
+.van-loading__spinner { color: var(--primary); }
+
+/* === 公共工具类 === */
+.page-container {
+  background: var(--bg);
+  min-height: 100vh;
+  padding-bottom: 60px;
+}
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-hint);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 16px 16px 8px;
+}
+.status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+.status-dot--green  { background: var(--success); }
+.status-dot--orange { background: var(--warning); }
+.status-dot--red    { background: var(--danger); }
+.status-dot--gray   { background: var(--text-hint); }
+（内容由AI生成，仅供参考）

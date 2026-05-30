@@ -1,0 +1,261 @@
+<template>
+  <div class="page-container my-borrows">
+    <van-nav-bar :title="isAdmin ? '借出中' : '我的借用'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
+
+    <!-- 普通用户：tab 切换 -->
+    <van-tabs v-if="!isAdmin" v-model:active="activeTab" @change="onTabChange" sticky color="#1e5dc9" title-active-color="#1e5dc9">
+      <van-tab v-for="t in tabs" :key="t.value" :title="t.label" :name="t.value" />
+    </van-tabs>
+
+    <van-list v-model:loading="loading" :finished="finished" @load="fetchRecords" offset="20">
+      <div
+        v-for="r in records"
+        :key="r.id"
+        class="record-card"
+        :class="{ 'record-overdue': isAdmin && isOverdue(r) }"
+      >
+        <div class="record-top">
+          <div class="record-device">{{ r.device_name }}</div>
+          <div class="record-top-right">
+            <span v-if="isAdmin && r.type === 'reserve'" class="record-type-tag">预约</span>
+            <span v-if="isAdmin" class="record-qty">{{ r.qty }} 台</span>
+            <span v-else class="record-badge" :class="'badge--' + r.status">{{ statusText(r.status) }}</span>
+          </div>
+        </div>
+        <div class="record-detail">
+          <!-- 管理员视图：借出中详情 -->
+          <template v-if="isAdmin">
+            <div class="record-row">
+              <span class="record-label">借用人</span>
+              <span>{{ r.username }}-{{ r.borrower_name || r.username }}</span>
+            </div>
+            <div class="record-row">
+              <span class="record-label">用途</span>
+              <span>{{ r.purpose || '—' }}</span>
+            </div>
+            <div class="record-row">
+              <span class="record-label">借用日期</span>
+              <span>{{ r.borrow_date }}</span>
+            </div>
+            <div class="record-row" :class="{ 'text-danger': isOverdue(r) }">
+              <span class="record-label">预计归还</span>
+              <span :class="{ 'fw-bold': isOverdue(r) }">{{ r.expect_return || '—' }}</span>
+            </div>
+            <div class="record-row">
+              <span class="record-label">审批人</span>
+              <span>{{ r.approver || '—' }}</span>
+            </div>
+          </template>
+          <!-- 普通用户视图：自己的借用 -->
+          <template v-else>
+            <div class="record-row">
+              <span class="record-label">借用日期</span>
+              <span>{{ r.borrow_date }}</span>
+            </div>
+            <div class="record-row">
+              <span class="record-label">预计归还</span>
+              <span>{{ r.expect_return || '未填写' }}</span>
+            </div>
+            <div class="record-row">
+              <span class="record-label">数量</span>
+              <span>{{ r.qty }} 台</span>
+            </div>
+            <div class="record-row" v-if="r.purpose">
+              <span class="record-label">用途</span>
+              <span class="record-purpose">{{ r.purpose }}</span>
+            </div>
+            <div class="record-row record-reject" v-if="r.status === 'rejected' && r.reject_reason">
+              <span class="record-label">拒绝原因</span>
+              <span>{{ r.reject_reason }}</span>
+            </div>
+            <button
+              v-if="r.type === 'reserve' && r.status === 'approved'"
+              class="confirm-btn"
+              @click="onConfirm(r.id)"
+            >确认取用</button>
+          </template>
+        </div>
+      </div>
+      <van-empty v-if="!loading && records.length === 0" :description="isAdmin ? '当前无设备借出' : '暂无记录'" />
+    </van-list>
+
+    <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
+      <van-tabbar-item icon="home-o" to="/home">首页</van-tabbar-item>
+      <van-tabbar-item icon="notes-o" to="/my-borrows">{{ isAdmin ? '借出中' : '我的借用' }}</van-tabbar-item>
+    </van-tabbar>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import { showToast, showConfirmDialog } from 'vant'
+import { api } from '../api.js'
+
+const route = useRoute()
+const role = ref(localStorage.getItem('role') || '')
+const isAdmin = role.value === '管理员'
+const activeTab = ref('all')
+const records = ref([])
+const loading = ref(false)
+const finished = ref(false)
+
+const tabs = [
+  { label: '全部', value: 'all' },
+  { label: '待审批', value: 'pending' },
+  { label: '预约中', value: 'reserved' },
+  { label: '已通过', value: 'approved' },
+  { label: '已拒绝', value: 'rejected' },
+  { label: '已归还', value: 'returned' },
+]
+
+const tabbarActive = ref(1)
+watch(() => route.path, (val) => {
+  if (val === '/home') tabbarActive.value = 0
+  else if (val === '/my-borrows') tabbarActive.value = 1
+}, { immediate: true })
+
+const statusText = (s) => {
+  const map = { pending: '待审批', reserved: '预约中', approved: '已通过', rejected: '已拒绝', returned: '已归还', borrowed: '使用中' }
+  return map[s] || s
+}
+
+const isOverdue = (r) => {
+  if (!r.expect_return) return false
+  return new Date(r.expect_return) < new Date()
+}
+
+const fetchRecords = async () => {
+  loading.value = true
+  try {
+    if (isAdmin) {
+      const [res1, res2] = await Promise.all([
+        api.getBorrows({ status: 'approved' }),
+        api.getBorrows({ status: 'borrowed' })
+      ])
+      const data = []
+      if (res1.success) data.push(...res1.data)
+      if (res2.success) data.push(...res2.data)
+      records.value = data
+    } else {
+      const params = {}
+      if (activeTab.value !== 'all') params.status = activeTab.value
+      const res = await api.getBorrows(params)
+      if (res.success) records.value = res.data
+    }
+    finished.value = true
+  } catch (e) {} finally { loading.value = false }
+}
+
+const onTabChange = () => {
+  finished.value = false
+  fetchRecords()
+}
+
+const onConfirm = async (id) => {
+  try {
+    await showConfirmDialog({ title: '确认取用', message: '确认已取到该设备？取用后库存将减少' })
+    const res = await api.confirmBorrow(id)
+    if (res.success) { showToast('确认取用成功'); fetchRecords() }
+    else showToast(res.message)
+  } catch (e) {}
+}
+
+onMounted(fetchRecords)
+</script>
+
+<style scoped>
+.my-borrows { padding-bottom: 60px; }
+
+.record-card {
+  background: var(--surface);
+  margin: 8px 16px;
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.record-overdue {
+  border-left: 3px solid var(--danger);
+  background: #fffafa;
+}
+.record-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.record-device {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.record-top-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.record-type-tag {
+  background: #f3e8ff;
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.record-qty {
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: #f0f3f8;
+  padding: 2px 10px;
+  border-radius: 4px;
+}
+.record-badge {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.badge--pending  { background: #fef3e6; color: #b85c00; }
+.badge--reserved { background: #f3e8ff; color: #7c3aed; }
+.badge--approved { background: #e8f5eb; color: #1a7f3e; }
+.badge--rejected { background: #fef0f0; color: #c92a2a; }
+.badge--returned { background: #f0f1f5; color: #9090a2; }
+.badge--borrowed { background: #e8f5eb; color: #1a7f3e; }
+
+.record-detail { border-top: 1px solid var(--divider); padding-top: 10px; }
+.record-row {
+  display: flex;
+  padding: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  gap: 8px;
+}
+.record-label {
+  color: var(--text-hint);
+  width: 64px;
+  flex-shrink: 0;
+}
+.record-purpose {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.record-reject { color: var(--danger); }
+.record-reject .record-label { color: var(--danger); }
+
+.text-danger { color: var(--danger); }
+.fw-bold { font-weight: 600; }
+
+.confirm-btn {
+  width: 100%;
+  height: 36px;
+  margin-top: 10px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: var(--font);
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+.confirm-btn:active { transform: scale(0.98); }
+</style>
