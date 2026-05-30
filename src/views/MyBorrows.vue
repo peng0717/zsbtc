@@ -1,6 +1,6 @@
 <template>
   <div class="page-container my-borrows">
-    <van-nav-bar :title="isAdmin ? '借出中' : '我的借用'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
+    <van-nav-bar :title="isAdmin ? '借出中' : '借出列表'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
     <!-- 普通用户：tab 切换 -->
     <van-tabs v-if="!isAdmin" v-model:active="activeTab" @change="onTabChange" sticky color="#1e5dc9" title-active-color="#1e5dc9">
@@ -8,91 +8,86 @@
     </van-tabs>
 
     <van-list v-model:loading="loading" :finished="finished" @load="fetchRecords" offset="20">
-      <div
-        v-for="r in records"
-        :key="r.id"
-        class="record-card"
-        :class="{ 'record-overdue': isAdmin && isOverdue(r) }"
-      >
-        <div class="record-top">
-          <div class="record-device">{{ r.device_name }}</div>
-          <div class="record-top-right">
-            <span v-if="isAdmin && r.type === 'reserve'" class="record-type-tag">预约</span>
-            <span v-if="isAdmin" class="record-qty">{{ r.qty }} 台</span>
-            <span v-else class="record-badge" :class="'badge--' + r.status">{{ statusText(r.status) }}</span>
+      <van-swipe-cell v-for="r in records" :key="r.id">
+        <div
+          class="record-card"
+          :class="{ 'record-overdue': isAdmin && isOverdue(r) }"
+        >
+          <div class="record-top">
+            <div class="record-device">{{ r.device_name }}</div>
+            <div class="record-top-right">
+              <span v-if="isAdmin && r.type === 'reserve'" class="record-type-tag">预约</span>
+              <span v-if="isAdmin" class="record-qty">{{ r.qty }} 台</span>
+              <span v-else class="record-badge" :class="'badge--' + r.status">{{ statusText(r.status) }}</span>
+            </div>
+          </div>
+          <div class="record-detail">
+            <template v-if="isAdmin">
+              <div class="record-row">
+                <span class="record-label">借用人</span>
+                <span>{{ r.username }}-{{ r.borrower_name || r.username }}</span>
+              </div>
+              <div class="record-row">
+                <span class="record-label">用途</span>
+                <span>{{ r.purpose || '—' }}</span>
+              </div>
+              <div class="record-row">
+                <span class="record-label">借用日期</span>
+                <span>{{ r.borrow_date }}</span>
+              </div>
+              <div class="record-row" :class="{ 'text-danger': isOverdue(r) }">
+                <span class="record-label">预计归还</span>
+                <span :class="{ 'fw-bold': isOverdue(r) }">{{ r.expect_return || '—' }}</span>
+              </div>
+              <div class="record-row">
+                <span class="record-label">审批人</span>
+                <span>{{ r.approver || '—' }}</span>
+              </div>
+            </template>
+            <template v-else>
+              <div class="record-row">
+                <span class="record-label">借用日期</span>
+                <span>{{ r.borrow_date }}</span>
+              </div>
+              <div class="record-row">
+                <span class="record-label">预计归还</span>
+                <span>{{ r.expect_return || '未填写' }}</span>
+              </div>
+              <div class="record-row">
+                <span class="record-label">数量</span>
+                <span>{{ r.qty }} 台</span>
+              </div>
+              <div class="record-row" v-if="r.purpose">
+                <span class="record-label">用途</span>
+                <span class="record-purpose">{{ r.purpose }}</span>
+              </div>
+              <div class="record-row record-reject" v-if="r.status === 'rejected' && r.reject_reason">
+                <span class="record-label">拒绝原因</span>
+                <span>{{ r.reject_reason }}</span>
+              </div>
+              <button
+                v-if="r.type === 'reserve' && r.status === 'approved'"
+                class="confirm-btn"
+                @click="onConfirm(r.id)"
+              >确认取用</button>
+            </template>
           </div>
         </div>
-        <div class="record-detail">
-          <!-- 管理员视图：借出中详情 -->
-          <template v-if="isAdmin">
-            <div class="record-row">
-              <span class="record-label">借用人</span>
-              <span>{{ r.username }}-{{ r.borrower_name || r.username }}</span>
-            </div>
-            <div class="record-row">
-              <span class="record-label">用途</span>
-              <span>{{ r.purpose || '—' }}</span>
-            </div>
-            <div class="record-row">
-              <span class="record-label">借用日期</span>
-              <span>{{ r.borrow_date }}</span>
-            </div>
-            <div class="record-row" :class="{ 'text-danger': isOverdue(r) }">
-              <span class="record-label">预计归还</span>
-              <span :class="{ 'fw-bold': isOverdue(r) }">{{ r.expect_return || '—' }}</span>
-            </div>
-            <div class="record-row">
-              <span class="record-label">审批人</span>
-              <span>{{ r.approver || '—' }}</span>
-            </div>
-          </template>
-          <!-- 普通用户视图：自己的借用 -->
-          <template v-else>
-            <div class="record-row">
-              <span class="record-label">借用日期</span>
-              <span>{{ r.borrow_date }}</span>
-            </div>
-            <div class="record-row">
-              <span class="record-label">预计归还</span>
-              <span>{{ r.expect_return || '未填写' }}</span>
-            </div>
-            <div class="record-row">
-              <span class="record-label">数量</span>
-              <span>{{ r.qty }} 台</span>
-            </div>
-            <div class="record-row" v-if="r.purpose">
-              <span class="record-label">用途</span>
-              <span class="record-purpose">{{ r.purpose }}</span>
-            </div>
-            <div class="record-row record-reject" v-if="r.status === 'rejected' && r.reject_reason">
-              <span class="record-label">拒绝原因</span>
-              <span>{{ r.reject_reason }}</span>
-            </div>
-            <button
-              v-if="r.type === 'reserve' && r.status === 'approved'"
-              class="confirm-btn"
-              @click="onConfirm(r.id)"
-            >确认取用</button>
-          </template>
-        </div>
-      </div>
+        <template #right>
+          <van-button square type="danger" text="删除" @click="onDelete(r.id, r.device_name)" />
+        </template>
+      </van-swipe-cell>
       <van-empty v-if="!loading && records.length === 0" :description="isAdmin ? '当前无设备借出' : '暂无记录'" />
     </van-list>
 
-    <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
-      <van-tabbar-item icon="home-o" to="/home">首页</van-tabbar-item>
-      <van-tabbar-item icon="notes-o" to="/my-borrows">{{ isAdmin ? '借出中' : '我的借用' }}</van-tabbar-item>
-    </van-tabbar>
-  </div>
+    </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
 import { api } from '../api.js'
 
-const route = useRoute()
 const role = ref(localStorage.getItem('role') || '')
 const isAdmin = role.value === '管理员'
 const activeTab = ref('all')
@@ -108,12 +103,6 @@ const tabs = [
   { label: '已拒绝', value: 'rejected' },
   { label: '已归还', value: 'returned' },
 ]
-
-const tabbarActive = ref(1)
-watch(() => route.path, (val) => {
-  if (val === '/home') tabbarActive.value = 0
-  else if (val === '/my-borrows') tabbarActive.value = 1
-}, { immediate: true })
 
 const statusText = (s) => {
   const map = { pending: '待审批', reserved: '预约中', approved: '已通过', rejected: '已拒绝', returned: '已归还', borrowed: '使用中' }
@@ -161,11 +150,20 @@ const onConfirm = async (id) => {
   } catch (e) {}
 }
 
+const onDelete = async (id, name) => {
+  try {
+    await showConfirmDialog({ title: '确认删除', message: `确定要删除设备"${name}"的借用记录吗？` })
+    const res = await api.deleteBorrow(id)
+    if (res.success) { showToast('删除成功'); fetchRecords() }
+    else showToast(res.message)
+  } catch (e) {}
+}
+
 onMounted(fetchRecords)
 </script>
 
 <style scoped>
-.my-borrows { padding-bottom: 60px; }
+.my-borrows { padding-bottom: 20px; }
 
 .record-card {
   background: var(--surface);

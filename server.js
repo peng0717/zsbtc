@@ -1,10 +1,10 @@
 const express = require('express');
+require('express-async-errors');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-// multer 在 Vercel serverless 不可用（无持久磁盘），本地开发时取消注释
-let multer = null;
-try { multer = require('multer'); } catch (e) { console.log('multer 不可用（Vercel 环境）'); }
+// multer 在 Vercel serverless 不可用（无持久磁盘）
+const multer = null;
 const fs = require('fs');
 const path = require('path');
 
@@ -14,8 +14,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sbjies_secret_key_2026';
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
 // ========== Turso HTTP REST API ==========
-const TURSO_URL = process.env.TURSO_URL || 'libsql://sbjies-peng0717.aws-ap-northeast-1.turso.io';
-const TURSO_TOKEN = process.env.TURSO_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3ODAxNTI0NjIsImlkIjoiMDE5ZTc5M2QtOTMwMS03YWNhLTg4MDktNmVlY2MwNTcxYjA1IiwicmlkIjoiMjFhMTY4OTItMGI1Yi00ODFlLThmMzItMDRmMGU0Y2IxOTNkIn0.3J784PczoTPxjuldkPNkJ1Ae0RsNpZUrFQT_Au4q0l1PZsBIym5uy5GbskzT2dE1Rz1RIs7MMapeUJNCALHiCg';
+const TURSO_URL = (process.env.TURSO_URL || 'libsql://sbjies-peng0717.aws-ap-northeast-1.turso.io').replace(/^\uFEFF/, '');
+const TURSO_TOKEN = (process.env.TURSO_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3ODAxNTI0NjIsImlkIjoiMDE5ZTc5M2QtOTMwMS03YWNhLTg4MDktNmVlY2MwNTcxYjA1IiwicmlkIjoiMjFhMTY4OTItMGI1Yi00ODFlLThmMzItMDRmMGU0Y2IxOTNkIn0.3J784PczoTPxjuldkPNkJ1Ae0RsNpZUrFQT_Au4q0l1PZsBIym5uy5GbskzT2dE1Rz1RIs7MMapeUJNCALHiCg').replace(/^\uFEFF/, '');
 const TURSO_HTTP = TURSO_URL.replace('libsql://', 'https://');
 
 async function tursoFetch(sql, params = []) {
@@ -577,6 +577,24 @@ app.put('/api/borrows/:id/return', authMiddleware, requireAdmin, async (req, res
   return res.json({ success: true, message: '归还成功' });
 });
 
+// DELETE /api/borrows/:id
+app.delete('/api/borrows/:id', authMiddleware, async (req, res) => {
+  const record = await get('SELECT * FROM borrow_records WHERE id = ?', [req.params.id]);
+  if (!record) {
+    return res.json({ success: false, message: '记录不存在' });
+  }
+  // 非管理员只能删除自己的记录
+  if (req.user.role !== '管理员' && record.user_id !== req.user.id) {
+    return res.json({ success: false, message: '无权删除此记录' });
+  }
+  // 如果记录状态是 approved 或 borrowed，归还库存
+  if (record.status === 'approved' || record.status === 'borrowed') {
+    await run('UPDATE devices SET available = available + ? WHERE id = ?', [record.qty, record.device_id]);
+  }
+  await run('DELETE FROM borrow_records WHERE id = ?', [req.params.id]);
+  return res.json({ success: true, message: '删除成功' });
+});
+
 // ========== 文件上传 ==========
 
 // POST /api/upload
@@ -589,20 +607,16 @@ app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
 }
 
 // ========== 启动 ==========
-// Vercel serverless: 暂不初始化，排查崩溃原因
-let dbReady = Promise.resolve();
-// let dbReady = initDB();
-// dbReady.catch(err => {
-//   console.error('数据库初始化失败:', err);
-//   if (!process.env.VERCEL) process.exit(1);
-// });
+let dbReady = initDB().catch(err => {
+  console.error('数据库初始化失败:', err);
+  if (!process.env.VERCEL) process.exit(1);
+  return false; // 标记失败但不阻塞请求
+});
 
-// 数据库就绪中间件（health 端点除外）
+// 数据库就绪中间件
 app.use('/api', (req, res, next) => {
   if (req.path === '/health') return next();
-  dbReady.then(() => next()).catch(() => {
-    res.status(503).json({ success: false, message: '服务初始化中，请稍后重试' });
-  });
+  next(); // initDB 失败时也不阻塞，由各路由自行处理DB错误
 });
 
 // Vercel serverless 不监听端口；本地开发时监听
@@ -614,5 +628,11 @@ if (!process.env.VERCEL) {
 } else {
   console.log('Vercel serverless 模式已就绪');
 }
+
+// 全局错误处理
+app.use((err, req, res, next) => {
+  console.error('API错误:', err);
+  res.status(500).json({ success: false, message: '服务器内部错误', error: process.env.VERCEL ? err.message : err.stack });
+});
 
 module.exports = app;

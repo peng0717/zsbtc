@@ -52,7 +52,7 @@
 
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
       <van-tabbar-item icon="home-o" to="/home">首页</van-tabbar-item>
-      <van-tabbar-item icon="notes-o" to="/my-borrows">我的借用</van-tabbar-item>
+      <van-tabbar-item icon="notes-o" to="/my-borrows">借出列表</van-tabbar-item>
       <van-tabbar-item v-if="role === '管理员'" icon="setting-o" to="/admin/devices">管理</van-tabbar-item>
     </van-tabbar>
 

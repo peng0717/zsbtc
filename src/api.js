@@ -41,6 +41,7 @@ export const api = {
   rejectBorrow: (id, reason) => http.put(`/borrows/${id}/reject`, { reason }),
   confirmBorrow: (id) => http.put(`/borrows/${id}/confirm`),
   returnDevice: (id) => http.put(`/borrows/${id}/return`),
+  deleteBorrow: (id) => http.delete(`/borrows/${id}`),
   updateProfile: (data) => http.put('/auth/profile', data),
   uploadImage: (file) => {
     const formData = new FormData()
