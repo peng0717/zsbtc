@@ -5,3 +5,4 @@ server.js.bak
 uploads/*
 !uploads/.gitkeep
 .env
+.vercel

@@ -151,6 +151,11 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// GET /api/health（不依赖数据库）
+app.get('/api/health', (req, res) => {
+  res.json({ success: true, message: 'OK', time: getNow(), env: process.env.VERCEL ? 'vercel' : 'local' });
+});
+
 // ========== 认证 API ==========
 
 // POST /api/auth/login
@@ -550,7 +555,10 @@ initDB().then(() => {
   }
 }).catch(err => {
   console.error('数据库初始化失败:', err);
-  process.exit(1);
+  // Vercel serverless 环境不能 process.exit，仅记录错误
+  if (!process.env.VERCEL) {
+    process.exit(1);
+  }
 });
 
 module.exports = app;
