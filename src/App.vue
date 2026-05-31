@@ -1,10 +1,12 @@
 <template>
   <van-config-provider>
+    <Analytics />
     <router-view />
   </van-config-provider>
 </template>
 
 <script setup>
+import { Analytics } from '@vercel/analytics/vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
