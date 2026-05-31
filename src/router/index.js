@@ -6,6 +6,7 @@ const routes = [
   { path: '/home', component: () => import('../views/Home.vue'), meta: { auth: true } },
   { path: '/device/:id', component: () => import('../views/DeviceDetail.vue'), meta: { auth: true } },
   { path: '/borrow/:deviceId', component: () => import('../views/Borrow.vue'), meta: { auth: true } },
+  { path: '/scan', component: () => import('../views/Scan.vue'), meta: { auth: true } },
   { path: '/my-borrows', component: () => import('../views/MyBorrows.vue'), meta: { auth: true } },
   { path: '/admin/devices', component: () => import('../views/AdminDevices.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/approval', component: () => import('../views/AdminApproval.vue'), meta: { auth: true, admin: true } },

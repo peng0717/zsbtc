@@ -7,15 +7,26 @@ const bcrypt = require('bcryptjs');
 const multer = null;
 const fs = require('fs');
 const path = require('path');
+const pino = require('pino');
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
+const helmet = require('helmet');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const JWT_SECRET = process.env.JWT_SECRET || 'sbjies_secret_key_2026';
+if (!process.env.JWT_SECRET) {
+  logger.error('JWT_SECRET 环境变量未设置，服务无法启动');
+  process.exit(1);
+}
+const JWT_SECRET = process.env.JWT_SECRET;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
 // ========== Turso HTTP REST API ==========
 const TURSO_URL = (process.env.TURSO_URL || 'libsql://sbjies-peng0717.aws-ap-northeast-1.turso.io').replace(/^\uFEFF/, '');
-const TURSO_TOKEN = (process.env.TURSO_TOKEN || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3ODAxNTI0NjIsImlkIjoiMDE5ZTc5M2QtOTMwMS03YWNhLTg4MDktNmVlY2MwNTcxYjA1IiwicmlkIjoiMjFhMTY4OTItMGI1Yi00ODFlLThmMzItMDRmMGU0Y2IxOTNkIn0.3J784PczoTPxjuldkPNkJ1Ae0RsNpZUrFQT_Au4q0l1PZsBIym5uy5GbskzT2dE1Rz1RIs7MMapeUJNCALHiCg').replace(/^\uFEFF/, '');
+if (!process.env.TURSO_TOKEN) {
+  logger.error('TURSO_TOKEN 环境变量未设置，服务无法启动');
+  process.exit(1);
+}
+const TURSO_TOKEN = process.env.TURSO_TOKEN.replace(/^\uFEFF/, '');
 const TURSO_HTTP = TURSO_URL.replace('libsql://', 'https://');
 
 async function tursoFetch(sql, params = []) {
@@ -149,7 +160,7 @@ async function initDB() {
       'INSERT INTO devices (name, model, category, total, available, description, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
       ['笔记本电脑', 'ThinkPad X1 Carbon', '电子设备', 5, 5, '轻薄办公本', 'normal', now]
     );
-    console.log('已创建示例设备');
+    logger.info('已创建示例设备');
   }
 }
 
@@ -168,9 +179,51 @@ if (multer) {
   upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 }
 
-app.use(cors());
+// ========== 频率限制 ==========
+const rateLimit = require('express-rate-limit');
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '尝试次数过多，请15分钟后重试' }
+});
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '注册频率过高，请1小时后重试' }
+});
+
+// ========== 中间件 ==========
+app.use(helmet());
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',')
+  : ['http://localhost:3000'];
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+// 请求日志中间件
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    logger.info({ method: req.method, path: req.path, status: res.statusCode, ms: Date.now() - start }, 'request');
+  });
+  next();
+});
 
 // ========== JWT 中间件 ==========
 function authMiddleware(req, res, next) {
@@ -233,7 +286,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // POST /api/auth/register
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', registerLimiter, async (req, res) => {
   const { username, name, password, phone, role } = req.body;
   if (!username || !name || !password) {
     return res.json({ success: false, message: '学工号、姓名和密码不能为空' });
@@ -722,16 +775,16 @@ app.use('/api', (req, res, next) => {
 // Vercel serverless 不监听端口；本地开发时监听
 if (!process.env.VERCEL) {
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`掌上设备通后端已启动（Turso云端数据库）: http://localhost:${PORT}`);
-    console.log(`局域网访问: http://192.168.0.100:${PORT}`);
+    logger.info(`掌上设备通后端已启动（Turso云端数据库）: http://localhost:${PORT}`);
+    logger.info(`局域网访问: http://192.168.0.100:${PORT}`);
   });
 } else {
-  console.log('Vercel serverless 模式已就绪');
+  logger.info('Vercel serverless 模式已就绪');
 }
 
 // 全局错误处理
 app.use((err, req, res, next) => {
-  console.error('API错误:', err);
+  logger.error({ err }, 'API错误');
   res.status(500).json({ success: false, message: '服务器内部错误', error: process.env.VERCEL ? err.message : err.stack });
 });
 

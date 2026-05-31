@@ -7,6 +7,7 @@
         </div>
       </template>
       <template #right>
+        <van-icon name="scan" size="22" @click="goScan" class="nav-scan" style="margin-right: 16px;" />
         <van-icon name="cross" size="22" @click="logout" class="nav-logout" />
       </template>
     </van-nav-bar>
@@ -127,6 +128,8 @@ const onSearch = () => {}
 const onTabChange = () => {}
 const goDetail = (id) => router.push(`/device/${id}`)
 
+const goScan = () => router.push('/scan')
+
 const logout = () => {
   showConfirmDialog({
     title: '退出登录',
@@ -215,6 +218,7 @@ onMounted(fetchDevices)
   align-items: center;
   justify-content: center;
 }
+.nav-scan { color: var(--primary); cursor: pointer; }
 .nav-logout { color: var(--text-secondary); cursor: pointer; }
 
 .device-list { padding: 4px 16px 16px; }
