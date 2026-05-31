@@ -13,23 +13,16 @@ const helmet = require('helmet');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-if (!process.env.JWT_SECRET) {
-  logger.error('JWT_SECRET 环境变量未设置，服务无法启动');
-  process.exit(1);
-}
 const JWT_SECRET = process.env.JWT_SECRET;
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 
 // ========== Turso HTTP REST API ==========
 const TURSO_URL = (process.env.TURSO_URL || 'libsql://sbjies-peng0717.aws-ap-northeast-1.turso.io').replace(/^\uFEFF/, '');
-if (!process.env.TURSO_TOKEN) {
-  logger.error('TURSO_TOKEN 环境变量未设置，服务无法启动');
-  process.exit(1);
-}
-const TURSO_TOKEN = process.env.TURSO_TOKEN.replace(/^\uFEFF/, '');
+const TURSO_TOKEN = (process.env.TURSO_TOKEN || '').replace(/^\uFEFF/, '');
 const TURSO_HTTP = TURSO_URL.replace('libsql://', 'https://');
 
 async function tursoFetch(sql, params = []) {
+  if (!TURSO_TOKEN) throw new Error('TURSO_TOKEN not configured');
   const body = {
     requests: [
       { type: 'execute', stmt: { sql, args: params.map(v => {
@@ -227,6 +220,7 @@ app.use((req, res, next) => {
 
 // ========== JWT 中间件 ==========
 function authMiddleware(req, res, next) {
+  if (!JWT_SECRET) return res.status(500).json({ success: false, message: 'JWT_SECRET 未配置' });
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, message: '未登录' });
@@ -271,6 +265,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (!bcrypt.compareSync(password, user.password)) {
     return res.json({ success: false, message: '密码错误' });
   }
+  if (!JWT_SECRET) return res.status(500).json({ success: false, message: 'JWT_SECRET 未配置' });
   const token = jwt.sign(
     { id: user.id, username: user.username, role: user.role },
     JWT_SECRET,
