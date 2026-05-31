@@ -282,6 +282,19 @@ app.put('/api/auth/profile', authMiddleware, async (req, res) => {
 
 // ========== 用户管理 API（管理员）==========
 
+// GET /api/users/search
+app.get('/api/users/search', authMiddleware, requireAdmin, async (req, res) => {
+  const { keyword } = req.query;
+  if (!keyword) {
+    return res.json({ success: false, message: '请输入搜索关键词' });
+  }
+  const users = await all(
+    "SELECT id, username, name, role, phone, status FROM users WHERE (username LIKE ? OR name LIKE ?) AND status = 'active' ORDER BY id LIMIT 20",
+    [`%${keyword}%`, `%${keyword}%`]
+  );
+  return res.json({ success: true, data: users });
+});
+
 // GET /api/users
 app.get('/api/users', authMiddleware, requireAdmin, async (req, res) => {
   const users = await all('SELECT id, username, name, role, phone, status, created_at FROM users ORDER BY id');
@@ -339,6 +352,19 @@ app.patch('/api/users/:id/enable', authMiddleware, requireAdmin, async (req, res
 });
 
 // ========== 设备管理 API ==========
+
+// GET /api/devices/search
+app.get('/api/devices/search', async (req, res) => {
+  const { keyword } = req.query;
+  if (!keyword) {
+    return res.json({ success: false, message: '请输入搜索关键词' });
+  }
+  const devices = await all(
+    "SELECT * FROM devices WHERE name LIKE ? AND status = 'normal' ORDER BY id DESC LIMIT 20",
+    [`%${keyword}%`]
+  );
+  return res.json({ success: true, data: devices });
+});
 
 // GET /api/devices
 app.get('/api/devices', async (req, res) => {
@@ -429,18 +455,34 @@ app.delete('/api/devices/:id', authMiddleware, requireAdmin, async (req, res) =>
 
 // POST /api/borrows
 app.post('/api/borrows', authMiddleware, async (req, res) => {
-  const { device_id, qty, purpose, expect_return, type } = req.body;
-  if (!device_id) {
-    return res.json({ success: false, message: '请选择设备' });
-  }
+  let { device_id, device_name, qty, purpose, expect_return, type } = req.body;
   const q = qty ? parseInt(qty) : 1;
   if (q <= 0) {
     return res.json({ success: false, message: '借用数量必须大于0' });
   }
-  const device = await get('SELECT * FROM devices WHERE id = ?', [device_id]);
-  if (!device) {
-    return res.json({ success: false, message: '设备不存在' });
+
+  let device = null;
+  if (device_id) {
+    device = await get('SELECT * FROM devices WHERE id = ?', [device_id]);
+  } else if (device_name) {
+    const devices = await all(
+      "SELECT * FROM devices WHERE name LIKE ? AND status = 'normal'",
+      [`%${device_name}%`]
+    );
+    if (devices.length === 0) {
+      return res.json({ success: false, message: '未找到匹配的设备' });
+    }
+    if (devices.length > 1) {
+      return res.json({ success: false, data: devices, message: '找到多个匹配设备，请选择' });
+    }
+    device = devices[0];
+    device_id = device.id;
   }
+
+  if (!device) {
+    return res.json({ success: false, message: '请选择设备' });
+  }
+
   if (device.status !== 'normal') {
     return res.json({ success: false, message: '该设备当前不可借用' });
   }
@@ -593,6 +635,64 @@ app.delete('/api/borrows/:id', authMiddleware, async (req, res) => {
   }
   await run('DELETE FROM borrow_records WHERE id = ?', [req.params.id]);
   return res.json({ success: true, message: '删除成功' });
+});
+
+// POST /api/borrows/admin（管理员辅助登记）
+app.post('/api/borrows/admin', authMiddleware, requireAdmin, async (req, res) => {
+  const { username, device_id, device_name, qty, purpose, expect_return, type } = req.body;
+  if (!username) {
+    return res.json({ success: false, message: '请输入学工号' });
+  }
+  const q = qty ? parseInt(qty) : 1;
+  if (q <= 0) {
+    return res.json({ success: false, message: '借用数量必须大于0' });
+  }
+
+  // 查找用户
+  const user = await get("SELECT id, username, name, role FROM users WHERE username = ? AND status = 'active'", [username]);
+  if (!user) {
+    return res.json({ success: false, message: '用户不存在或已被禁用' });
+  }
+
+  // 查找设备
+  let device = null;
+  if (device_id) {
+    device = await get('SELECT * FROM devices WHERE id = ?', [device_id]);
+  } else if (device_name) {
+    const devices = await all(
+      "SELECT * FROM devices WHERE name LIKE ? AND status = 'normal'",
+      [`%${device_name}%`]
+    );
+    if (devices.length === 0) {
+      return res.json({ success: false, message: '未找到匹配的设备' });
+    }
+    if (devices.length > 1) {
+      return res.json({ success: false, data: devices, message: '找到多个匹配设备，请选择' });
+    }
+    device = devices[0];
+  }
+  if (!device) {
+    return res.json({ success: false, message: '请选择设备' });
+  }
+  if (device.status !== 'normal') {
+    return res.json({ success: false, message: '该设备当前不可借用' });
+  }
+  if (device.available < q) {
+    return res.json({ success: false, message: '可借数量不足' });
+  }
+
+  const now = getNow();
+  const borrowType = type || 'borrow';
+
+  // 创建记录，状态直接为 approved（管理员当面登记）
+  await run(
+    "INSERT INTO borrow_records (device_id, device_name, user_id, username, qty, purpose, borrow_date, expect_return, status, type, approver, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?)",
+    [device.id, device.name, user.id, user.username, q, purpose || '', now, expect_return || '', borrowType, req.user.username, now]
+  );
+
+  await run('UPDATE devices SET available = available - ? WHERE id = ?', [q, device.id]);
+
+  return res.json({ success: true, message: '登记成功，已自动审批' });
 });
 
 // ========== 文件上传 ==========

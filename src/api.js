@@ -50,4 +50,7 @@ export const api = {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
   },
+  searchDevices: (keyword) => http.get('/devices/search', { params: { keyword } }),
+  searchUsers: (keyword) => http.get('/users/search', { params: { keyword } }),
+  adminBorrow: (data) => http.post('/borrows/admin', data),
 }

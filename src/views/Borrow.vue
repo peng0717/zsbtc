@@ -2,24 +2,62 @@
   <div class="page-container">
     <van-nav-bar :title="isReserve ? '预约借用' : '申请借用'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
-    <div class="borrow-header" v-if="device.name">
+    <!-- 设备搜索 -->
+    <div class="borrow-search">
+      <van-field
+        v-model="deviceKeyword"
+        label="设备名称"
+        placeholder="输入设备名称搜索"
+        clearable
+        @update:model-value="onSearchDevice"
+      />
+      <div v-if="deviceResults.length > 0" class="device-results">
+        <div
+          v-for="d in deviceResults"
+          :key="d.id"
+          class="device-result-item"
+          :class="{ selected: selectedDevice && selectedDevice.id === d.id }"
+          @click="selectDevice(d)"
+        >
+          <div class="device-result-left">
+            <div class="device-result-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1e5dc9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div>
+              <div class="device-result-name">{{ d.name }}</div>
+              <div class="device-result-meta">
+                <span v-if="d.model">{{ d.model }}</span>
+                <span v-if="d.category">{{ d.category }}</span>
+                <span class="device-avail">可借 {{ d.available }} 台</span>
+              </div>
+            </div>
+          </div>
+          <van-icon v-if="selectedDevice && selectedDevice.id === d.id" name="success" color="#1e5dc9" />
+        </div>
+      </div>
+      <div v-if="selectedDevice" class="selected-tag">
+        <van-tag type="primary" size="medium">已选: {{ selectedDevice.name }} (可借 {{ selectedDevice.available }} 台)</van-tag>
+      </div>
+    </div>
+
+    <div class="borrow-header" v-if="selectedDevice">
       <div class="borrow-device-icon">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#1e5dc9" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
       </div>
       <div>
-        <div class="borrow-device-name">{{ device.name }}</div>
+        <div class="borrow-device-name">{{ selectedDevice.name }}</div>
         <div class="borrow-device-stock">
           <template v-if="isReserve">
             预约借用 <strong>{{ qty }}</strong> 台
           </template>
           <template v-else>
-            剩余可借 <strong>{{ device.available }}</strong> 台
+            剩余可借 <strong>{{ selectedDevice.available }}</strong> 台
           </template>
         </div>
       </div>
     </div>
 
-    <van-form @submit="onSubmit" class="borrow-form">
+    <van-form @submit="onSubmit" class="borrow-form" v-if="selectedDevice">
       <div class="form-section">
         <van-cell-group>
           <van-cell title="借用数量" center>
@@ -68,6 +106,8 @@
         <p class="form-hint">{{ isReserve ? '预约后需等待管理员审批，通过后确认取用' : '提交后需等待管理员审批' }}</p>
       </div>
     </van-form>
+
+    <van-empty v-if="!selectedDevice && !searching" description="请搜索并选择要借用的设备" />
   </div>
 </template>
 
@@ -79,7 +119,13 @@ import { api } from '../api.js'
 
 const route = useRoute()
 const router = useRouter()
-const device = ref({})
+
+const deviceKeyword = ref('')
+const deviceResults = ref([])
+const selectedDevice = ref(null)
+const searching = ref(false)
+let searchTimer = null
+
 const qty = ref(1)
 const purpose = ref('')
 const expectReturn = ref('')
@@ -88,12 +134,41 @@ const loading = ref(false)
 
 const isReserve = computed(() => route.query.type === 'reserve')
 const maxQty = computed(() => {
-  if (isReserve.value) return Math.max(device.value.total || 1, 10)
-  return device.value.available || 1
+  if (!selectedDevice.value) return 1
+  if (isReserve.value) return Math.max(selectedDevice.value.total || 1, 10)
+  return selectedDevice.value.available || 1
 })
 
 const today = new Date()
 const minDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+const onSearchDevice = (val) => {
+  if (searchTimer) clearTimeout(searchTimer)
+  if (!val) {
+    deviceResults.value = []
+    return
+  }
+  searching.value = true
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await api.searchDevices(val)
+      if (res.success) {
+        deviceResults.value = res.data
+        if (res.data.length === 1) {
+          selectDevice(res.data[0])
+        }
+      }
+    } catch (e) { /* ignore */ }
+    searching.value = false
+  }, 400)
+}
+
+const selectDevice = (d) => {
+  selectedDevice.value = d
+  deviceResults.value = []
+  deviceKeyword.value = d.name
+  qty.value = 1
+}
 
 const onDaysChange = (val) => {
   const days = parseInt(val)
@@ -106,21 +181,28 @@ const onDaysChange = (val) => {
   expectReturn.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-const fetchDevice = async () => {
+// 兼容旧入口：从设备详情页通过路由参数跳转时自动加载
+const fetchDeviceById = async () => {
+  const deviceId = route.params.deviceId
+  if (!deviceId) return
   try {
     const res = await api.getDevices()
     if (res.success) {
-      const found = res.data.find(d => d.id == route.params.deviceId)
-      if (found) device.value = found
+      const found = res.data.find(d => d.id == deviceId)
+      if (found) {
+        selectedDevice.value = found
+        deviceKeyword.value = found.name
+      }
     }
-  } catch (e) { showToast('加载设备信息失败') }
+  } catch (e) { /* ignore */ }
 }
 
 const onSubmit = async () => {
+  if (!selectedDevice.value) return
   loading.value = true
   try {
     const payload = {
-      device_id: parseInt(route.params.deviceId),
+      device_id: selectedDevice.value.id,
       qty: qty.value,
       purpose: purpose.value,
       expect_return: expectReturn.value
@@ -140,10 +222,52 @@ const onSubmit = async () => {
   }
 }
 
-onMounted(fetchDevice)
+onMounted(fetchDeviceById)
 </script>
 
 <style scoped>
+.borrow-search {
+  background: var(--surface);
+  margin: 12px 16px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+
+.device-results {
+  border-top: 1px solid var(--divider);
+}
+
+.device-result-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f5f6fa;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.device-result-item:active { background: #f5f7ff; }
+.device-result-item.selected { background: #f0f4ff; }
+.device-result-left { display: flex; align-items: center; gap: 10px; }
+.device-result-icon {
+  width: 40px; height: 40px;
+  background: var(--primary-soft);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.device-result-name { font-size: 14px; font-weight: 500; color: var(--text); }
+.device-result-meta {
+  display: flex; gap: 6px; align-items: center;
+  margin-top: 2px; font-size: 12px; color: var(--text-hint);
+}
+.device-avail { color: var(--primary); font-weight: 500; }
+
+.selected-tag { padding: 8px 16px 12px; }
+
 .borrow-header {
   display: flex;
   align-items: center;
@@ -213,4 +337,3 @@ onMounted(fetchDevice)
   font-family: var(--font);
 }
 </style>
-（内容由AI生成，仅供参考）

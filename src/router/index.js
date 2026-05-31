@@ -11,6 +11,7 @@ const routes = [
   { path: '/admin/approval', component: () => import('../views/AdminApproval.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/return', component: () => import('../views/AdminReturn.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/users', component: () => import('../views/AdminUsers.vue'), meta: { auth: true, admin: true } },
+  { path: '/admin/borrow', component: () => import('../views/AdminBorrow.vue'), meta: { auth: true, admin: true } },
   { path: '/:pathMatch(.*)*', component: () => import('../views/NotFound.vue') },
 ]
 
