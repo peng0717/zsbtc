@@ -63,7 +63,9 @@ router.post('/', authMiddleware, async (req, res) => {
 
   await run('UPDATE devices SET available = available - ? WHERE id = ?', [q, device_id]);
 
-  sendApprovalNotify(device.name, user.name, now).catch(() => {});
+  sendApprovalNotify(device.name, user.name, now).catch((err) => {
+    console.error('[WeChat] 调用sendApprovalNotify异常:', err.message);
+  });
 
   return res.json({ success: true, message: '借用申请已提交，请等待审批' });
 });
