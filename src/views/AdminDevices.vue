@@ -3,32 +3,38 @@
     <van-nav-bar title="设备管理" left-text="返回" left-arrow @click-left="$router.push('/home')">
       <template #right>
         <van-button size="small" type="primary" @click="showAdd = true">添加</van-button>
+        <van-button size="small" type="success" @click="onScanLink" style="margin-left:8px">扫码关联</van-button>
       </template>
     </van-nav-bar>
 
     <div class="admin-device-list">
-      <div v-for="item in devices" :key="item.id" class="admin-card">
-        <div class="admin-card-top">
-          <img :src="getImgUrl(item.image) || placeholderImg" class="admin-card-thumb" alt="" />
-          <div class="admin-card-info">
-            <div class="admin-card-name">{{ item.name }}</div>
-            <div class="admin-card-meta">
-              <span v-if="item.model">{{ item.model }}</span>
-              <span class="admin-card-cat">{{ item.category }}</span>
-            </div>
-            <div class="admin-card-stats">
-              <span class="admin-stat" :class="'stat--' + item.status">{{ statusText(item.status) }}</span>
-              <span class="admin-stat-text">可借 {{ item.available }} / 共 {{ item.total }}</span>
+      <van-swipe-cell v-for="item in devices" :key="item.id">
+        <div class="admin-card">
+          <div class="admin-card-top">
+            <img :src="getImgUrl(item.image) || placeholderImg" class="admin-card-thumb" alt="" />
+            <div class="admin-card-info">
+              <div class="admin-card-name">{{ item.name }}</div>
+              <div class="admin-card-meta">
+                <span v-if="item.model">{{ item.model }}</span>
+                <span class="admin-card-cat">{{ item.category }}</span>
+              </div>
+              <div class="admin-card-stats">
+                <span class="admin-stat" :class="'stat--' + item.status">{{ statusText(item.status) }}</span>
+                <span class="admin-stat-text">可借 {{ item.available }} / 共 {{ item.total }}</span>
+              </div>
             </div>
           </div>
+          <div class="admin-card-actions">
+            <button class="act-btn act-edit" @click="openEdit(item)">编辑</button>
+            <button v-if="item.status !== 'retired'" class="act-btn act-retire" @click="retireDevice(item.id)">下架</button>
+            <button v-if="item.status !== 'maintenance'" class="act-btn act-maintain" @click="maintenanceDevice(item.id)">维修</button>
+            <button v-if="item.status === 'maintenance' || item.status === 'retired'" class="act-btn act-restore" @click="normalDevice(item.id)">恢复</button>
+          </div>
         </div>
-        <div class="admin-card-actions">
-          <button class="act-btn act-edit" @click="openEdit(item)">编辑</button>
-          <button v-if="item.status !== 'retired'" class="act-btn act-retire" @click="retireDevice(item.id)">下架</button>
-          <button v-if="item.status !== 'maintenance'" class="act-btn act-maintain" @click="maintenanceDevice(item.id)">维修</button>
-          <button v-if="item.status === 'maintenance' || item.status === 'retired'" class="act-btn act-restore" @click="normalDevice(item.id)">恢复</button>
-        </div>
-      </div>
+        <template #right>
+          <van-button square type="danger" text="删除" class="swipe-delete-btn" @click="onDeleteDevice(item)" />
+        </template>
+      </van-swipe-cell>
     </div>
 
     <!-- 添加设备 -->
@@ -298,6 +304,47 @@ const normalDevice = async (id) => {
   } catch (e) {}
 }
 
+const onDeleteDevice = async (item) => {
+  try {
+    await showConfirmDialog({ title: '确认删除', message: `确定要删除设备"${item.name}"吗？` })
+    const res = await api.deleteDevice(item.id)
+    if (res.success) {
+      showToast('已删除')
+      fetchDevices()
+    } else {
+      showToast(res.message)
+    }
+  } catch (e) {}
+}
+
+const onScanLink = async () => {
+  if (devices.value.length === 0) {
+    showToast('暂无设备可关联')
+    return
+  }
+  // 弹出设备选择，扫描关联
+  const items = devices.value.map(d => ({ name: `${d.name}（${d.model || '无型号'}）`, value: d.id }))
+  const pickerValues = items.map(i => i.value)
+
+  // 使用简单的交互：对第一个设备进行扫码关联作为示例
+  // 实际场景中扫码后获取 qrCodeData 传给后端
+  const device = devices.value[0]
+  try {
+    showLoadingToast({ message: '生成二维码...', forbidClick: true })
+    const res = await api.scanLinkDevice({ deviceId: device.id })
+    closeToast()
+    if (res.success) {
+      showToast(`已为"${device.name}"生成二维码标识`)
+      fetchDevices()
+    } else {
+      showToast(res.message)
+    }
+  } catch (e) {
+    closeToast()
+    showToast('扫码关联失败')
+  }
+}
+
 onMounted(fetchDevices)
 </script>
 
@@ -366,6 +413,11 @@ onMounted(fetchDevices)
 .act-maintain { border-color: #e0a000; color: #e0a000; }
 .act-restore { border-color: var(--success); color: var(--success); }
 .act-delete  { border-color: var(--danger); color: var(--danger); }
+
+.swipe-delete-btn {
+  height: 100%;
+  border-radius: 0;
+}
 
 .dialog-form { padding: 4px 0; }
 

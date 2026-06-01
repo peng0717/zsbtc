@@ -66,15 +66,18 @@ router.get('/users', authMiddleware, requireAdmin, async (req, res) => {
 
 // POST /api/admin/users
 router.post('/users', authMiddleware, requireAdmin, async (req, res) => {
-  const { username, name, role, phone } = req.body;
+  const { username, name, role, phone, password } = req.body;
   if (!username || !name) {
     return res.json({ success: false, message: '学工号和姓名不能为空' });
+  }
+  if (!password) {
+    return res.json({ success: false, message: '密码为必填项' });
   }
   const exist = await get('SELECT id FROM users WHERE username = ?', [username]);
   if (exist) {
     return res.json({ success: false, message: '该学工号已存在' });
   }
-  const hash = bcrypt.hashSync('123456', 10);
+  const hash = bcrypt.hashSync(password, 10);
   const now = getNow();
   await run(
     'INSERT INTO users (username, password, name, role, phone, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',

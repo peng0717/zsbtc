@@ -120,7 +120,17 @@ const onScanSuccess = async (decodedText) => {
 
 const matchDevice = async (text) => {
   try {
-    // 先尝试按设备名称搜索
+    // 优先按 qr_code 精确匹配
+    const qrRes = await api.getDeviceByQr(text)
+    if (qrRes.success) {
+      matchedDevice.value = qrRes.data
+      matchStatus.value = 'single'
+      return
+    }
+  } catch (e) {}
+
+  try {
+    // 按设备名称搜索
     const res = await api.searchDevices(text)
     if (res.success) {
       const devices = res.data

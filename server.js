@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 require('express-async-errors');
 const cors = require('cors');
@@ -104,9 +105,13 @@ async function initDB() {
     available INTEGER DEFAULT 1,
     description TEXT,
     image TEXT,
+    qr_code TEXT,
     status TEXT DEFAULT 'normal',
     created_at TEXT NOT NULL
   )`);
+
+  // 为已有数据库补充 qr_code 字段
+  try { await run('ALTER TABLE devices ADD COLUMN qr_code TEXT'); } catch (_) {}
 
   await run(`CREATE TABLE IF NOT EXISTS borrow_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -126,15 +131,28 @@ async function initDB() {
     created_at TEXT NOT NULL
   )`);
 
-  // 种子数据：管理员
-  const admin = await get('SELECT * FROM users WHERE username = ?', ['23160129']);
-  if (!admin) {
-    const hash = bcrypt.hashSync('100311', 10);
-    await run(
-      'INSERT INTO users (username, password, name, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      ['23160129', hash, '管理员', '管理员', 'active', getNow()]
-    );
-    console.log('已创建初始管理员: 23160129');
+  // 黑名单 token 表（JWT 吊销）
+  await run(`CREATE TABLE IF NOT EXISTS blacklisted_tokens (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    token_hash TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // 种子数据：管理员（从环境变量读取，未配置则跳过）
+  const seedStudentId = process.env.ADMIN_SEED_STUDENT_ID;
+  const seedPassword = process.env.ADMIN_SEED_PASSWORD;
+  if (seedStudentId && seedPassword) {
+    const admin = await get('SELECT * FROM users WHERE username = ?', [seedStudentId]);
+    if (!admin) {
+      const hash = bcrypt.hashSync(seedPassword, 10);
+      await run(
+        'INSERT INTO users (username, password, name, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [seedStudentId, hash, '管理员', '管理员', 'active', getNow()]
+      );
+      console.log(`已创建初始管理员: ${seedStudentId}`);
+    }
+  } else {
+    console.warn('⚠️  未配置 ADMIN_SEED_STUDENT_ID 或 ADMIN_SEED_PASSWORD，跳过管理员种子数据创建');
   }
 
   // 种子数据：示例设备

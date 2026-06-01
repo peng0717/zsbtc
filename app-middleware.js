@@ -1,11 +1,12 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const pino = require('pino');
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // ========== JWT 认证中间件 ==========
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   if (!JWT_SECRET) return res.status(500).json({ success: false, message: 'JWT_SECRET 未配置' });
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -13,6 +14,13 @@ function authMiddleware(req, res, next) {
   }
   try {
     const token = authHeader.split(' ')[1];
+    // 校验 token 是否在黑名单中
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const db = require('./db');
+    const blackRecord = await db.get('SELECT id FROM blacklisted_tokens WHERE token_hash = ?', [tokenHash]);
+    if (blackRecord) {
+      return res.status(401).json({ success: false, message: 'Token已失效，请重新登录' });
+    }
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = { id: decoded.id, username: decoded.username, role: decoded.role };
     next();

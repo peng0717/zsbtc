@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { get, run, getNow } = require('../db');
@@ -103,6 +104,15 @@ router.put('/profile', authMiddleware, async (req, res) => {
   }
   const user = await get('SELECT id, username, name, role, phone, status FROM users WHERE id = ?', [req.user.id]);
   return res.json({ success: true, message: '修改成功', data: user });
+});
+
+// POST /api/auth/logout
+router.post('/logout', authMiddleware, async (req, res) => {
+  const authHeader = req.headers.authorization;
+  const token = authHeader.split(' ')[1];
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  await run('INSERT INTO blacklisted_tokens (token_hash) VALUES (?)', [tokenHash]);
+  return res.json({ success: true, message: '已退出登录' });
 });
 
 module.exports = router;
