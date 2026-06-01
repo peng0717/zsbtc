@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { get, all, run, getNow } = require('../db');
 const { authMiddleware, requireAdmin } = require('../app-middleware');
+const { sendWxPusherNotify } = require('../utils/wxpusher');
 
 // POST /api/borrows
 router.post('/', authMiddleware, async (req, res) => {
@@ -65,6 +66,18 @@ router.post('/', authMiddleware, async (req, res) => {
   sendApprovalNotify(device.name, user.name, now).catch((err) => {
     console.error('[WeChat] 调用sendApprovalNotify异常:', err.message);
   });
+
+  // 发送 WxPusher 微信通知
+  const wxPusherUid = process.env.WXPUSHER_UID;
+  if (wxPusherUid) {
+    sendWxPusherNotify(
+      wxPusherUid,
+      '借用申请已提交',
+      '您的借用申请已提交，等待管理员审批。'
+    ).catch((err) => {
+      console.error('[WxPusher] 发送通知异常:', err.message);
+    });
+  }
 
   return res.json({ success: true, message: '借用申请已提交，请等待审批' });
 });
