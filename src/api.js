@@ -57,4 +57,5 @@ export const api = {
   searchUsers: (keyword) => http.get('/users/search', { params: { keyword } }),
   adminBorrow: (data) => http.post('/borrows/admin', data),
   getDashboard: () => http.get('/dashboard'),
+  getMySummary: () => http.get('/borrows/summary'),
 }

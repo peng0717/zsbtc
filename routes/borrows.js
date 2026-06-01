@@ -256,4 +256,34 @@ router.post('/admin', authMiddleware, requireAdmin, async (req, res) => {
   return res.json({ success: true, message: '登记成功，已自动审批' });
 });
 
+// GET /api/borrows/summary - 个人借用摘要
+router.get('/summary', authMiddleware, async (req, res) => {
+  const now = getNow();
+  const userId = req.user.id;
+
+  const borrowing = await get(
+    "SELECT COUNT(*) as count FROM borrow_records WHERE user_id = ? AND status IN ('approved', 'borrowed')",
+    [userId]
+  );
+
+  const toReturn = await get(
+    "SELECT COUNT(*) as count FROM borrow_records WHERE user_id = ? AND status IN ('approved', 'borrowed') AND expect_return IS NOT NULL AND expect_return != '' AND expect_return < ?",
+    [userId, now]
+  );
+
+  const overdue = await get(
+    "SELECT COUNT(*) as count FROM borrow_records WHERE user_id = ? AND status IN ('approved', 'borrowed') AND expect_return IS NOT NULL AND expect_return != '' AND expect_return < ?",
+    [userId, now]
+  );
+
+  res.json({
+    success: true,
+    data: {
+      borrowing: borrowing.count,
+      toReturn: toReturn.count,
+      overdue: overdue.count
+    }
+  });
+});
+
 module.exports = router;

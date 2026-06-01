@@ -12,61 +12,58 @@
       </template>
     </van-nav-bar>
 
-    <!-- 看板统计卡片 -->
-    <div class="dash-cards">
-      <div class="dash-card">
-        <div class="dash-card-icon dash-icon-blue">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        </div>
-        <div class="dash-card-num">{{ stats.totalDevices }}</div>
-        <div class="dash-card-label">设备总数</div>
+    <!-- 个人借用摘要 -->
+    <div class="summary-card">
+      <div class="summary-title">
+        <span>我的借用</span>
+        <span class="summary-sub" v-if="summary.borrowing === 0">暂无借用</span>
       </div>
-      <div class="dash-card">
-        <div class="dash-card-icon dash-icon-green">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <span class="summary-num summary-blue">{{ summary.borrowing }}</span>
+          <span class="summary-label">借用中</span>
         </div>
-        <div class="dash-card-num">{{ stats.borrowedCount }}</div>
-        <div class="dash-card-label">借用中</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-card-icon dash-icon-purple">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div class="summary-item">
+          <span class="summary-num summary-orange">{{ summary.toReturn }}</span>
+          <span class="summary-label">待归还</span>
         </div>
-        <div class="dash-card-num">{{ stats.todayBorrows }}</div>
-        <div class="dash-card-label">今日借用</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-card-icon dash-icon-red">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        </div>
-        <div class="dash-card-num">{{ stats.overdueCount }}</div>
-        <div class="dash-card-label">逾期数量</div>
-      </div>
-    </div>
-
-    <!-- 快捷入口 -->
-    <div class="dash-quick">
-      <h3 class="quick-title">快捷入口</h3>
-      <div class="quick-grid">
-        <div class="quick-item" @click="$router.push('/admin/devices')">
-          <van-icon name="wap-home-o" size="22" />
-          <span>设备管理</span>
-        </div>
-        <div class="quick-item" @click="$router.push('/admin/users')">
-          <van-icon name="friends-o" size="22" />
-          <span>用户管理</span>
-        </div>
-        <div class="quick-item" @click="$router.push('/admin/approval')">
-          <van-icon name="checked" size="22" />
-          <span>借用审批</span>
-        </div>
-        <div class="quick-item" @click="$router.push('/admin/borrow-return')">
-          <van-icon name="exchange-o" size="22" />
-          <span>借还管理</span>
+        <div class="summary-item">
+          <span class="summary-num summary-red">{{ summary.overdue }}</span>
+          <span class="summary-label">已逾期</span>
         </div>
       </div>
     </div>
 
+    <!-- 设备分类 + 搜索 -->
+    <van-tabs v-model:active="activeCat" sticky color="#1e5dc9" title-active-color="#1e5dc9">
+      <van-tab v-for="cat in categories" :key="cat" :title="cat" :name="cat" />
+    </van-tabs>
+
+    <van-search v-model="searchKey" shape="round" placeholder="搜索设备名称/型号" />
+
+    <!-- 设备列表 -->
+    <div class="device-list">
+      <div
+        v-for="d in filteredDevices"
+        :key="d.id"
+        class="device-card"
+        @click="$router.push('/device/' + d.id)"
+      >
+        <img :src="getImgUrl(d.image) || placeholderImg" class="device-thumb" alt="" />
+        <div class="device-info">
+          <div class="device-name">{{ d.name }}</div>
+          <div class="device-meta" v-if="d.model">{{ d.model }} · {{ d.category }}</div>
+          <div class="device-stats">
+            <span class="device-status" :class="'stat--' + d.status">{{ statusText(d.status) }}</span>
+            <span class="device-avail">可借 {{ d.available }} / 共 {{ d.total }}</span>
+          </div>
+        </div>
+        <van-icon name="arrow" class="device-arrow" />
+      </div>
+      <van-empty v-if="!loadingDevices && filteredDevices.length === 0" description="暂无设备" />
+    </div>
+
+    <!-- 底部 tabbar -->
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
       <van-tabbar-item icon="home-o" to="/home">首页</van-tabbar-item>
       <van-tabbar-item icon="notes-o" to="/my-borrows">借出列表</van-tabbar-item>
@@ -109,22 +106,68 @@ watch(() => route.path, (val) => {
   else if (val === '/my-borrows') tabbarActive.value = 1
 }, { immediate: true })
 
-const stats = ref({
-  totalDevices: 0,
-  borrowedCount: 0,
-  todayBorrows: 0,
-  overdueCount: 0
-})
+// 个人借用摘要
+const summary = ref({ borrowing: 0, toReturn: 0, overdue: 0 })
 
-const fetchStats = async () => {
+const fetchSummary = async () => {
   try {
-    const res = await api.getDashboard()
-    if (res.success) stats.value = res.data
+    const res = await api.getMySummary()
+    if (res.success) summary.value = res.data
   } catch (e) {}
 }
 
+// 设备列表
+const devices = ref([])
+const loadingDevices = ref(false)
+const searchKey = ref('')
+const activeCat = ref('全部')
+
+const categories = computed(() => {
+  const cats = [...new Set(devices.value.map(d => d.category).filter(Boolean))]
+  return ['全部', ...cats]
+})
+
+const filteredDevices = computed(() => {
+  let list = devices.value
+  if (activeCat.value !== '全部') {
+    list = list.filter(d => d.category === activeCat.value)
+  }
+  if (searchKey.value) {
+    const kw = searchKey.value.toLowerCase()
+    list = list.filter(d =>
+      d.name.toLowerCase().includes(kw) ||
+      (d.model && d.model.toLowerCase().includes(kw)) ||
+      (d.category && d.category.toLowerCase().includes(kw))
+    )
+  }
+  return list
+})
+
+const placeholderImg = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZjBmMmY2Ii8+PHRleHQgeD0iMzAiIHk9IjM0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYjBjMGQwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCI+5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
+
+const host = window.location.hostname
+const getImgUrl = (img) => {
+  if (!img) return ''
+  if (img.startsWith('http') || img.startsWith('data:')) return img
+  return `http://${host}:3001${img}`
+}
+
+const statusText = (s) => ({ normal: '正常', maintenance: '维修中', retired: '已下架' }[s] || s)
+
+const fetchDevices = async () => {
+  loadingDevices.value = true
+  try {
+    const res = await api.getDevices()
+    if (res.success) devices.value = res.data
+  } catch (e) {} finally {
+    loadingDevices.value = false
+  }
+}
+
+// 扫码
 const goScan = () => router.push('/scan')
 
+// 退出登录
 const logout = () => {
   showConfirmDialog({
     title: '退出登录',
@@ -137,6 +180,7 @@ const logout = () => {
   }).catch(() => {})
 }
 
+// 个人信息
 const showProfile = ref(false)
 const profileForm = reactive({
   username: userStore.username || '',
@@ -208,7 +252,10 @@ const onUpdateProfile = async () => {
   }
 }
 
-onMounted(fetchStats)
+onMounted(() => {
+  fetchSummary()
+  fetchDevices()
+})
 </script>
 
 <style scoped>
@@ -229,77 +276,96 @@ onMounted(fetchStats)
 .nav-scan { color: var(--primary); cursor: pointer; }
 .nav-logout { color: var(--text-secondary); cursor: pointer; }
 
-.dash-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  padding: 16px;
-}
-
-.dash-card {
+/* 个人借用摘要 */
+.summary-card {
+  margin: 12px 16px;
   background: var(--surface);
   border-radius: 14px;
-  padding: 20px 16px;
+  padding: 16px;
   box-shadow: var(--shadow-sm);
-  text-align: center;
 }
-.dash-card-icon {
-  width: 48px; height: 48px;
-  border-radius: 12px;
+.summary-title {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin: 0 auto 10px;
-}
-.dash-icon-blue   { background: #e8f0fe; color: #1e5dc9; }
-.dash-icon-green  { background: #e8f5eb; color: #1a7f3e; }
-.dash-icon-purple { background: #f3e8ff; color: #7c3aed; }
-.dash-icon-red    { background: #fef0f0; color: #c92a2a; }
-
-.dash-card-num {
-  font-size: 28px;
-  font-weight: 700;
+  justify-content: space-between;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text);
+  margin-bottom: 14px;
+}
+.summary-sub { font-size: 12px; font-weight: 400; color: var(--text-hint); }
+.summary-grid {
+  display: flex;
+  gap: 0;
+}
+.summary-item {
+  flex: 1;
+  text-align: center;
+  position: relative;
+}
+.summary-item + .summary-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background: var(--divider);
+}
+.summary-num {
+  display: block;
+  font-size: 26px;
+  font-weight: 700;
   line-height: 1.2;
 }
-.dash-card-label {
-  font-size: 13px;
+.summary-blue   { color: #1e5dc9; }
+.summary-orange { color: #e0a000; }
+.summary-red    { color: #c92a2a; }
+.summary-label {
+  font-size: 12px;
   color: var(--text-hint);
   margin-top: 4px;
 }
 
-.dash-quick {
-  margin: 0 16px;
-  background: var(--surface);
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: var(--shadow-sm);
-}
-.quick-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
-  margin: 0 0 14px;
-}
-.quick-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-  gap: 12px;
-}
-.quick-item {
+/* 设备列表 */
+.device-list { padding: 0 16px 16px; }
+
+.device-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 14px 8px;
-  border-radius: 10px;
-  background: #f7f8fb;
-  color: var(--text-secondary);
-  font-size: 12px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  box-shadow: var(--shadow-sm);
+  gap: 12px;
   cursor: pointer;
   transition: background 0.15s;
 }
-.quick-item:active { background: #eef1f7; }
+.device-card:active { background: #f7f9fc; }
+
+.device-thumb {
+  width: 52px; height: 52px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #f5f6fa;
+}
+
+.device-info { flex: 1; min-width: 0; }
+.device-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.device-meta { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+.device-stats { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.device-status {
+  font-size: 11px; font-weight: 600;
+  padding: 1px 8px; border-radius: 4px;
+}
+.stat--normal      { background: #e8f5eb; color: #1a7f3e; }
+.stat--maintenance { background: #fef3e6; color: #b85c00; }
+.stat--retired     { background: #fef0f0; color: #c92a2a; }
+.device-avail { font-size: 12px; color: var(--text-hint); }
+
+.device-arrow { color: #c0c4cc; flex-shrink: 0; }
 
 .profile-form { padding: 4px 0; }
 
