@@ -1,9 +1,8 @@
 <template>
   <div class="page-container my-borrows">
-    <van-nav-bar :title="isAdmin ? '借出中' : '借出列表'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
+    <van-nav-bar :title="userStore.isAdmin ? '借出中' : '借出列表'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
-    <!-- 普通用户：tab 切换 -->
-    <van-tabs v-if="!isAdmin" v-model:active="activeTab" @change="onTabChange" sticky color="#1e5dc9" title-active-color="#1e5dc9">
+    <van-tabs v-if="!userStore.isAdmin" v-model:active="activeTab" @change="onTabChange" sticky color="#1e5dc9" title-active-color="#1e5dc9">
       <van-tab v-for="t in tabs" :key="t.value" :title="t.label" :name="t.value" />
     </van-tabs>
 
@@ -11,18 +10,19 @@
       <van-swipe-cell v-for="r in records" :key="r.id">
         <div
           class="record-card"
-          :class="{ 'record-overdue': isAdmin && isOverdue(r) }"
+          :class="{ 'record-overdue': r.is_overdue }"
         >
           <div class="record-top">
             <div class="record-device">{{ r.device_name }}</div>
             <div class="record-top-right">
-              <span v-if="isAdmin && r.type === 'reserve'" class="record-type-tag">预约</span>
-              <span v-if="isAdmin" class="record-qty">{{ r.qty }} 台</span>
+              <span v-if="r.is_overdue" class="overdue-tag">已逾期</span>
+              <span v-if="userStore.isAdmin && r.type === 'reserve'" class="record-type-tag">预约</span>
+              <span v-if="userStore.isAdmin" class="record-qty">{{ r.qty }} 台</span>
               <span v-else class="record-badge" :class="'badge--' + r.status">{{ statusText(r.status) }}</span>
             </div>
           </div>
           <div class="record-detail">
-            <template v-if="isAdmin">
+            <template v-if="userStore.isAdmin">
               <div class="record-row">
                 <span class="record-label">借用人</span>
                 <span>{{ r.username }}-{{ r.borrower_name || r.username }}</span>
@@ -35,9 +35,9 @@
                 <span class="record-label">借用日期</span>
                 <span>{{ r.borrow_date }}</span>
               </div>
-              <div class="record-row" :class="{ 'text-danger': isOverdue(r) }">
+              <div class="record-row" :class="{ 'text-danger': r.is_overdue }">
                 <span class="record-label">预计归还</span>
-                <span :class="{ 'fw-bold': isOverdue(r) }">{{ r.expect_return || '—' }}</span>
+                <span :class="{ 'fw-bold': r.is_overdue }">{{ r.expect_return || '—' }}</span>
               </div>
               <div class="record-row">
                 <span class="record-label">审批人</span>
@@ -77,7 +77,7 @@
           <van-button square type="danger" text="删除" @click="onDelete(r.id, r.device_name)" />
         </template>
       </van-swipe-cell>
-      <van-empty v-if="!loading && records.length === 0" :description="isAdmin ? '当前无设备借出' : '暂无记录'" />
+      <van-empty v-if="!loading && records.length === 0" :description="userStore.isAdmin ? '当前无设备借出' : '暂无记录'" />
     </van-list>
 
     </div>
@@ -87,9 +87,9 @@
 import { ref, onMounted } from 'vue'
 import { showToast, showConfirmDialog } from 'vant'
 import { api } from '../api.js'
+import { useUserStore } from '../stores/user.js'
 
-const role = ref(localStorage.getItem('role') || '')
-const isAdmin = role.value === '管理员'
+const userStore = useUserStore()
 const activeTab = ref('all')
 const records = ref([])
 const loading = ref(false)
@@ -109,15 +109,10 @@ const statusText = (s) => {
   return map[s] || s
 }
 
-const isOverdue = (r) => {
-  if (!r.expect_return) return false
-  return new Date(r.expect_return) < new Date()
-}
-
 const fetchRecords = async () => {
   loading.value = true
   try {
-    if (isAdmin) {
+    if (userStore.isAdmin) {
       const [res1, res2] = await Promise.all([
         api.getBorrows({ status: 'approved' }),
         api.getBorrows({ status: 'borrowed' })
@@ -174,7 +169,7 @@ onMounted(fetchRecords)
 }
 .record-overdue {
   border-left: 3px solid var(--danger);
-  background: #fffafa;
+  background: #fef5f5;
 }
 .record-top {
   display: flex;
@@ -188,6 +183,14 @@ onMounted(fetchRecords)
   color: var(--text);
 }
 .record-top-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.overdue-tag {
+  background: #fef0f0;
+  color: #c92a2a;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
 .record-type-tag {
   background: #f3e8ff;
   color: #7c3aed;

@@ -113,13 +113,14 @@ import { showToast, showConfirmDialog, showLoadingToast, closeToast } from 'vant
 import { api } from '../api.js'
 
 const route = useRoute()
-const tabbarActive = ref(0)
+const tabbarActive = ref(1)
 watch(() => route.path, (val) => {
-  if (val === '/admin/devices') tabbarActive.value = 0
-  else if (val === '/admin/users') tabbarActive.value = 1
-  else if (val === '/admin/approval') tabbarActive.value = 2
-  else if (val === '/admin/return') tabbarActive.value = 3
-  else if (val === '/admin/borrow') tabbarActive.value = 4
+  if (val === '/admin/dashboard') tabbarActive.value = 0
+  else if (val === '/admin/devices') tabbarActive.value = 1
+  else if (val === '/admin/users') tabbarActive.value = 2
+  else if (val === '/admin/approval') tabbarActive.value = 3
+  else if (val === '/admin/return') tabbarActive.value = 4
+  else if (val === '/admin/borrow') tabbarActive.value = 5
 }, { immediate: true })
 
 const devices = ref([])

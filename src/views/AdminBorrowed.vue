@@ -58,13 +58,14 @@ import { useRoute } from 'vue-router'
 import { api } from '../api.js'
 
 const route = useRoute()
-const tabbarActive = ref(4)
+const tabbarActive = ref(5)
 watch(() => route.path, (val) => {
-  if (val === '/admin/devices') tabbarActive.value = 0
-  else if (val === '/admin/users') tabbarActive.value = 1
-  else if (val === '/admin/approval') tabbarActive.value = 2
-  else if (val === '/admin/return') tabbarActive.value = 3
-  else if (val === '/admin/borrowed') tabbarActive.value = 4
+  if (val === '/admin/dashboard') tabbarActive.value = 0
+  else if (val === '/admin/devices') tabbarActive.value = 1
+  else if (val === '/admin/users') tabbarActive.value = 2
+  else if (val === '/admin/approval') tabbarActive.value = 3
+  else if (val === '/admin/return') tabbarActive.value = 4
+  else if (val === '/admin/borrowed') tabbarActive.value = 5
 }, { immediate: true })
 
 const records = ref([])

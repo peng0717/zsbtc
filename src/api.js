@@ -1,10 +1,12 @@
 import axios from 'axios'
+import { useUserStore } from './stores/user.js'
 
 const http = axios.create({ baseURL: '/api' })
 
 http.interceptors.request.use(config => {
-  const token = localStorage.getItem('token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
+  // 动态从 Pinia store 获取 token
+  const userStore = useUserStore()
+  if (userStore.token) config.headers.Authorization = `Bearer ${userStore.token}`
   return config
 })
 
@@ -12,7 +14,8 @@ http.interceptors.response.use(
   res => res.data,
   err => {
     if (err.response?.status === 401) {
-      localStorage.clear()
+      const userStore = useUserStore()
+      userStore.logout()
       window.location.href = '/#/login'
     }
     return Promise.reject(err)
@@ -53,4 +56,5 @@ export const api = {
   searchDevices: (keyword) => http.get('/devices/search', { params: { keyword } }),
   searchUsers: (keyword) => http.get('/users/search', { params: { keyword } }),
   adminBorrow: (data) => http.post('/borrows/admin', data),
+  getDashboard: () => http.get('/dashboard'),
 }

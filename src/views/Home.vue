@@ -3,7 +3,7 @@
     <van-nav-bar title="设备列表" fixed placeholder>
       <template #left>
         <div class="nav-user">
-          <span class="nav-avatar" @click="showProfile = true">{{ (name || 'U')[0] }}</span>
+          <span class="nav-avatar" @click="showProfile = true">{{ (userStore.name || 'U')[0] }}</span>
         </div>
       </template>
       <template #right>
@@ -54,7 +54,7 @@
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
       <van-tabbar-item icon="home-o" to="/home">首页</van-tabbar-item>
       <van-tabbar-item icon="notes-o" to="/my-borrows">借出列表</van-tabbar-item>
-      <van-tabbar-item v-if="role === '管理员'" icon="setting-o" to="/admin/devices">管理</van-tabbar-item>
+      <van-tabbar-item v-if="userStore.isAdmin" icon="setting-o" to="/admin/devices">管理</van-tabbar-item>
     </van-tabbar>
 
     <!-- 个人信息弹窗 -->
@@ -63,7 +63,7 @@
         <van-field v-model="profileForm.username" label="学工号" readonly />
         <van-field v-model="profileForm.name" label="姓名" placeholder="请输入姓名" />
         <van-field v-model="profileForm.phone" label="手机号" type="tel" placeholder="请输入手机号" maxlength="11" />
-        <van-field v-model="profileForm.password" label="新密码" type="password" placeholder="留空则不修改" />
+        <van-field v-model="profileForm.password" label="新密码" type="password" placeholder="至少8位，含大小写字母和数字" />
         <van-field v-model="profileForm.confirmPassword" label="确认新密码" type="password" placeholder="再次输入新密码" />
       </div>
     </van-dialog>
@@ -75,15 +75,15 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
 import { api } from '../api.js'
+import { useUserStore } from '../stores/user.js'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 const keyword = ref('')
 const activeTab = ref('all')
 const devices = ref([])
 const loading = ref(true)
-const name = ref(localStorage.getItem('name') || '')
-const role = ref(localStorage.getItem('role') || '')
 
 const placeholderImg = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjBmMmY2Ii8+PHRleHQgeD0iNDAiIHk9IjQ0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYjBjMGQwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiI+5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
 
@@ -137,19 +137,15 @@ const logout = () => {
     confirmButtonText: '退出',
     cancelButtonText: '取消',
   }).then(() => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('userId')
-    localStorage.removeItem('username')
-    localStorage.removeItem('name')
-    localStorage.removeItem('role')
+    userStore.logout()
     router.push('/login')
   }).catch(() => {})
 }
 
 const showProfile = ref(false)
 const profileForm = reactive({
-  username: localStorage.getItem('username') || '',
-  name: localStorage.getItem('name') || '',
+  username: userStore.username || '',
+  name: userStore.name || '',
   phone: '',
   password: '',
   confirmPassword: '',
@@ -168,26 +164,36 @@ watch(showProfile, async (val) => {
   }
 })
 
+const validatePassword = (pwd) => {
+  if (pwd.length < 8) return '密码长度不能少于8位'
+  if (!/[a-z]/.test(pwd)) return '密码必须包含小写字母'
+  if (!/[A-Z]/.test(pwd)) return '密码必须包含大写字母'
+  if (!/[0-9]/.test(pwd)) return '密码必须包含数字'
+  return null
+}
+
 const onUpdateProfile = async () => {
   if (!profileForm.name) {
     showToast('姓名不能为空')
     return
   }
-  if (profileForm.password && profileForm.password.length < 6) {
-    showToast('密码长度不能少于6位')
-    return
-  }
-  if (profileForm.password && profileForm.password !== profileForm.confirmPassword) {
-    showToast('两次密码不一致')
-    return
+  if (profileForm.password) {
+    const pwdErr = validatePassword(profileForm.password)
+    if (pwdErr) {
+      showToast(pwdErr)
+      return
+    }
+    if (profileForm.password !== profileForm.confirmPassword) {
+      showToast('两次密码不一致')
+      return
+    }
   }
   try {
     const data = { name: profileForm.name, phone: profileForm.phone }
     if (profileForm.password) data.password = profileForm.password
     const res = await api.updateProfile(data)
     if (res.success) {
-      localStorage.setItem('name', res.data.name)
-      name.value = res.data.name
+      userStore.updateProfile(res.data)
       profileForm.password = ''
       profileForm.confirmPassword = ''
       showToast('修改成功')
@@ -299,4 +305,3 @@ onMounted(fetchDevices)
 
 .profile-form { padding: 4px 0; }
 </style>
-（内容由AI生成，仅供参考）

@@ -59,6 +59,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { api } from '../api.js'
+import { useUserStore } from '../stores/user.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -100,8 +101,8 @@ const fetchDetail = async () => {
 }
 
 const goBorrow = () => {
-  const token = localStorage.getItem('token')
-  if (!token) { router.push('/login'); return }
+  const userStore = useUserStore()
+  if (!userStore.token) { router.push('/login'); return }
   const query = isReserve.value ? '?type=reserve' : ''
   router.push(`/borrow/${route.params.id}${query}`)
 }

@@ -67,7 +67,13 @@
         </div>
         <div class="input-group">
           <label class="input-label">密码</label>
-          <input v-model="regForm.password" type="password" class="input-field" placeholder="至少6位" />
+          <input v-model="regForm.password" type="password" class="input-field" placeholder="至少8位，含大小写字母和数字" />
+          <div class="pwd-strength" v-if="regForm.password">
+            <span :class="pwdCheck.len ? 'pass' : 'fail'">8位+</span>
+            <span :class="pwdCheck.lower ? 'pass' : 'fail'">小写</span>
+            <span :class="pwdCheck.upper ? 'pass' : 'fail'">大写</span>
+            <span :class="pwdCheck.digit ? 'pass' : 'fail'">数字</span>
+          </div>
         </div>
         <div class="input-group">
           <label class="input-label">确认密码</label>
@@ -79,12 +85,14 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { api } from '../api.js'
+import { useUserStore } from '../stores/user.js'
 
 const router = useRouter()
+const userStore = useUserStore()
 const username = ref('')
 const password = ref('')
 const loading = ref(false)
@@ -98,6 +106,13 @@ const regForm = reactive({
   phone: '',
   role: '学生'
 })
+
+const pwdCheck = computed(() => ({
+  len: regForm.password.length >= 8,
+  lower: /[a-z]/.test(regForm.password),
+  upper: /[A-Z]/.test(regForm.password),
+  digit: /[0-9]/.test(regForm.password),
+}))
 
 const resetRegForm = () => {
   regForm.username = ''
@@ -117,13 +132,8 @@ const doLogin = async () => {
   try {
     const res = await api.login({ username: username.value, password: password.value })
     if (res.success) {
-      const { token, user } = res.data
-      localStorage.setItem('token', token)
-      localStorage.setItem('userId', user.id)
-      localStorage.setItem('username', user.username)
-      localStorage.setItem('name', user.name)
-      localStorage.setItem('role', user.role)
-      return { success: true, role: user.role }
+      userStore.setLogin({ token: res.data.token, user: res.data.user })
+      return { success: true, role: res.data.user.role }
     } else {
       showToast(res.message)
       return { success: false }
@@ -141,13 +151,22 @@ const onLogin = async () => {
   if (result.success) router.push('/home')
 }
 
+const validatePassword = (pwd) => {
+  if (pwd.length < 8) return '密码长度不能少于8位'
+  if (!/[a-z]/.test(pwd)) return '密码必须包含小写字母'
+  if (!/[A-Z]/.test(pwd)) return '密码必须包含大写字母'
+  if (!/[0-9]/.test(pwd)) return '密码必须包含数字'
+  return null
+}
+
 const onRegister = async () => {
   if (!regForm.username || !regForm.name || !regForm.password || !regForm.confirmPassword) {
     showToast('请填写所有字段')
     return
   }
-  if (regForm.password.length < 6) {
-    showToast('密码长度不能少于6位')
+  const pwdErr = validatePassword(regForm.password)
+  if (pwdErr) {
+    showToast(pwdErr)
     return
   }
   if (regForm.password !== regForm.confirmPassword) {
@@ -335,5 +354,18 @@ const onRegister = async () => {
   padding-right: 32px;
   cursor: pointer;
 }
+
+.pwd-strength {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 11px;
+}
+.pwd-strength span {
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.pwd-strength .pass { background: #e8f5eb; color: #1a7f3e; }
+.pwd-strength .fail { background: #fef0f0; color: #c92a2a; }
 </style>
-（内容由AI生成，仅供参考）

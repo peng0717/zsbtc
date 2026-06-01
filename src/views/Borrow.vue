@@ -181,7 +181,6 @@ const onDaysChange = (val) => {
   expectReturn.value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-// 兼容旧入口：从设备详情页通过路由参数跳转时自动加载
 const fetchDeviceById = async () => {
   const deviceId = route.params.deviceId
   if (!deviceId) return
