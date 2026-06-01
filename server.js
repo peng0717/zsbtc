@@ -10,7 +10,7 @@ const rateLimit = require('express-rate-limit');
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const { run, get, all, getNow } = require('./db');
 const bcrypt = require('bcryptjs');
-const { requestLogger, globalErrorHandler, notFoundHandler } = require('./middleware');
+const { requestLogger, globalErrorHandler, notFoundHandler } = require('./app-middleware');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -83,7 +83,7 @@ app.use('/api', require('./routes/admin'));
 
 // ========== 文件上传 ==========
 if (upload) {
-  const { authMiddleware } = require('./middleware');
+  const { authMiddleware } = require('./app-middleware');
   app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
     if (!req.file) return res.json({ success: false, message: '请选择图片' });
     const url = `/uploads/${req.file.filename}`;

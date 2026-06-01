@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { get, all, run, getNow } = require('../db');
-const { authMiddleware, requireAdmin } = require('../middleware');
+const { authMiddleware, requireAdmin } = require('../app-middleware');
 
 // GET /api/devices/search
 router.get('/search', async (req, res) => {

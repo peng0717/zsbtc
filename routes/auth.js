@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 const { get, run, getNow } = require('../db');
-const { authMiddleware, validatePassword } = require('../middleware');
+const { authMiddleware, validatePassword } = require('../app-middleware');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 

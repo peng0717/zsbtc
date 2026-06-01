@@ -2,7 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const router = express.Router();
 const { get, all, run, getNow } = require('../db');
-const { authMiddleware, requireAdmin } = require('../middleware');
+const { authMiddleware, requireAdmin } = require('../app-middleware');
 
 // ========== 统计看板 API ==========
 
