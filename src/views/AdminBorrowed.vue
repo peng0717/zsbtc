@@ -43,6 +43,7 @@
     </van-list>
 
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
+      <van-tabbar-item icon="chart-trending-o" to="/admin/dashboard">看板</van-tabbar-item>
       <van-tabbar-item icon="wap-home-o" to="/admin/devices">设备管理</van-tabbar-item>
       <van-tabbar-item icon="friends-o" to="/admin/users">用户管理</van-tabbar-item>
       <van-tabbar-item icon="checked" to="/admin/approval">借用审批</van-tabbar-item>

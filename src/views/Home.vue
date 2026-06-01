@@ -64,6 +64,12 @@
         <van-field v-model="profileForm.name" label="姓名" placeholder="请输入姓名" />
         <van-field v-model="profileForm.phone" label="手机号" type="tel" placeholder="请输入手机号" maxlength="11" />
         <van-field v-model="profileForm.password" label="新密码" type="password" placeholder="至少8位，含大小写字母和数字" />
+        <div class="pwd-strength" v-if="profileForm.password">
+          <span :class="pwdCheck.len ? 'pass' : 'fail'">8位+</span>
+          <span :class="pwdCheck.lower ? 'pass' : 'fail'">小写</span>
+          <span :class="pwdCheck.upper ? 'pass' : 'fail'">大写</span>
+          <span :class="pwdCheck.digit ? 'pass' : 'fail'">数字</span>
+        </div>
         <van-field v-model="profileForm.confirmPassword" label="确认新密码" type="password" placeholder="再次输入新密码" />
       </div>
     </van-dialog>
@@ -163,6 +169,13 @@ watch(showProfile, async (val) => {
     } catch (e) {}
   }
 })
+
+const pwdCheck = computed(() => ({
+  len: profileForm.password.length >= 8,
+  lower: /[a-z]/.test(profileForm.password),
+  upper: /[A-Z]/.test(profileForm.password),
+  digit: /[0-9]/.test(profileForm.password),
+}))
 
 const validatePassword = (pwd) => {
   if (pwd.length < 8) return '密码长度不能少于8位'
@@ -304,4 +317,19 @@ onMounted(fetchDevices)
 .device-arrow { flex-shrink: 0; margin-left: 4px; }
 
 .profile-form { padding: 4px 0; }
+
+.pwd-strength {
+  display: flex;
+  gap: 6px;
+  margin-top: 0;
+  padding: 0 16px 4px;
+  font-size: 11px;
+}
+.pwd-strength span {
+  padding: 1px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+.pwd-strength .pass { background: #e8f5eb; color: #1a7f3e; }
+.pwd-strength .fail { background: #fef0f0; color: #c92a2a; }
 </style>

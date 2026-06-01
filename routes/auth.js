@@ -1,11 +1,20 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { get, run, getNow } = require('../db');
 const { authMiddleware, validatePassword } = require('../app-middleware');
 
 const JWT_SECRET = process.env.JWT_SECRET;
+
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: '注册频率过高，请1小时后重试' }
+});
 
 // POST /api/auth/login
 router.post('/login', async (req, res) => {
@@ -39,7 +48,7 @@ router.post('/login', async (req, res) => {
 });
 
 // POST /api/auth/register
-router.post('/register', async (req, res) => {
+router.post('/register', registerLimiter, async (req, res) => {
   const { username, name, password, phone, role } = req.body;
   if (!username || !name || !password) {
     return res.json({ success: false, message: '学工号、姓名和密码不能为空' });

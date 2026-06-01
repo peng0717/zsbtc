@@ -42,14 +42,6 @@ const loginLimiter = rateLimit({
   message: { success: false, message: '尝试次数过多，请15分钟后重试' }
 });
 
-const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, message: '注册频率过高，请1小时后重试' }
-});
-
 // ========== 中间件注册 ==========
 app.use(helmet());
 const allowedOrigins = process.env.ALLOWED_ORIGINS
@@ -76,7 +68,6 @@ app.get('/api/health', (req, res) => {
 
 // ========== 路由挂载 ==========
 app.use('/api/auth', loginLimiter, require('./routes/auth'));
-app.use('/api/auth/register', registerLimiter);
 app.use('/api/devices', require('./routes/devices'));
 app.use('/api/borrows', require('./routes/borrows'));
 app.use('/api', require('./routes/admin'));
