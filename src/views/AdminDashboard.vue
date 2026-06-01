@@ -41,7 +41,7 @@
           <span>设备管理</span>
         </div>
         <div class="quick-item" @click="$router.push('/admin/approval')">
-          <van-icon name="checked" size="22" />
+          <van-icon name="certificate" size="22" />
           <span>借用审批</span>
         </div>
         <div class="quick-item" @click="$router.push('/admin/borrow-return')">
@@ -58,8 +58,8 @@
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
       <van-tabbar-item icon="wap-home-o" to="/admin/devices">设备管理</van-tabbar-item>
       <van-tabbar-item icon="friends-o" to="/admin/users">用户管理</van-tabbar-item>
-      <van-tabbar-item icon="checked" to="/admin/approval">借用审批</van-tabbar-item>
-      <van-tabbar-item icon="balance-o" to="/admin/borrow-return">借还管理</van-tabbar-item>
+      <van-tabbar-item icon="certificate" to="/admin/approval">借用审批</van-tabbar-item>
+      <van-tabbar-item icon="exchange" to="/admin/borrow-return">借还管理</van-tabbar-item>
       <van-tabbar-item icon="add-o" to="/admin/borrow">辅助登记</van-tabbar-item>
     </van-tabbar>
   </div>
