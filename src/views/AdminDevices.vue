@@ -48,10 +48,22 @@
         </van-field>
         <van-field v-model="form.total" label="总数" type="number" placeholder="请输入" />
         <van-field v-model="form.description" label="描述" placeholder="请输入" type="textarea" rows="2" />
-        <van-field v-model="form.qr_code" label="设备二维码" placeholder="可扫码/生成自动填入，也支持手动输入" clearable />
-        <div class="qr-actions">
-          <van-button size="small" type="primary" plain @click="openQrScanner">扫描设备二维码</van-button>
-          <van-button size="small" type="warning" plain @click="onGenerateQr">生成二维码</van-button>
+        <div class="qr-field">
+          <label class="qr-field-label">设备二维码</label>
+          <div class="qr-tags" v-if="form.qr_codes.length">
+            <span v-for="(code, idx) in form.qr_codes" :key="idx" class="qr-tag">
+              {{ code }}
+              <van-icon name="cross" class="qr-tag-remove" @click="form.qr_codes.splice(idx, 1)" />
+            </span>
+          </div>
+          <div class="qr-input-row">
+            <input v-model="manualQrInput" class="qr-manual-input" placeholder="手动输入二维码编号" />
+            <van-button size="small" type="default" @click="addManualQr">添加</van-button>
+          </div>
+          <div class="qr-actions">
+            <van-button size="small" type="primary" plain @click="openQrScanner">扫描设备二维码</van-button>
+            <van-button size="small" type="warning" plain @click="onGenerateQr">生成二维码</van-button>
+          </div>
         </div>
         <div class="image-field">
           <label class="image-field-label">设备图片</label>
@@ -175,13 +187,14 @@ const onCatEditConfirm = (v) => {
   showCatEdit.value = false
 }
 
-const form = ref({ name: '', model: '', category: '', total: 1, description: '', qr_code: '' })
+const form = ref({ name: '', model: '', category: '', total: 1, description: '', qr_codes: [] })
 const editForm = ref({ id: '', name: '', model: '', category: '', total: 1, description: '' })
 const imageFile = ref(null)
 const imagePreview = ref('')
 const editImageFile = ref(null)
 const editImagePreview = ref('')
 const uploading = ref(false)
+const manualQrInput = ref('')
 
 const statusText = (s) => ({ normal: '正常', maintenance: '维修中', retired: '已下架' }[s] || s)
 
@@ -200,7 +213,7 @@ const fetchDevices = async () => {
 }
 
 const resetForm = () => {
-  form.value = { name: '', model: '', category: '', total: 1, description: '', qr_code: '' }
+  form.value = { name: '', model: '', category: '', total: 1, description: '', qr_codes: [] }
   imageFile.value = null
   imagePreview.value = ''
 }
@@ -271,8 +284,9 @@ const uploadThenSave = async (data, file, isEdit, id) => {
 }
 
 const onAddDevice = async () => {
+  const qrCodesStr = form.value.qr_codes.join(',')
   await uploadThenSave(
-    { ...form.value, total: parseInt(form.value.total) || 1 },
+    { ...form.value, total: parseInt(form.value.total) || 1, qr_codes: qrCodesStr },
     imageFile.value,
     false
   )
@@ -346,9 +360,11 @@ const openQrScanner = async () => {
     html5QrScanner = new Html5Qrcode('admin-qr-reader')
     await html5QrScanner.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 250, height: 250 } },
+      { fps: 20, qrbox: { width: 250, height: 250 }, experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
       (decodedText) => {
-        form.value.qr_code = decodedText
+        if (!form.value.qr_codes.includes(decodedText)) {
+          form.value.qr_codes.push(decodedText)
+        }
         closeScanner()
         showToast('扫码成功')
       },
@@ -381,7 +397,9 @@ const onGenerateQr = async () => {
     const res = await api.generateQrCode(form.value.name || '设备')
     closeToast()
     if (res.success) {
-      form.value.qr_code = res.data.qr_code
+      if (!form.value.qr_codes.includes(res.data.qr_code)) {
+        form.value.qr_codes.push(res.data.qr_code)
+      }
       showToast('二维码标识已生成')
     } else {
       showToast(res.message)
@@ -390,6 +408,17 @@ const onGenerateQr = async () => {
     closeToast()
     showToast('生成失败')
   }
+}
+
+const addManualQr = () => {
+  const val = manualQrInput.value.trim()
+  if (!val) return
+  if (form.value.qr_codes.includes(val)) {
+    showToast('该二维码已存在')
+    return
+  }
+  form.value.qr_codes.push(val)
+  manualQrInput.value = ''
 }
 
 onMounted(fetchDevices)
@@ -535,10 +564,70 @@ onUnmounted(() => {
 }
 
 /* 二维码操作 */
+.qr-field {
+  padding: 10px 16px 4px;
+}
+
+.qr-field-label {
+  display: block;
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.qr-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.qr-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.qr-tag-remove {
+  font-size: 10px;
+  cursor: pointer;
+  color: #999;
+}
+
+.qr-tag-remove:active { color: var(--danger); }
+
+.qr-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.qr-manual-input {
+  flex: 1;
+  height: 34px;
+  border: 1px solid #d0d5e0;
+  border-radius: 6px;
+  padding: 0 10px;
+  font-size: 13px;
+  font-family: var(--font);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.qr-manual-input:focus { border-color: var(--primary); }
+
 .qr-actions {
   display: flex;
   gap: 10px;
-  padding: 8px 16px 4px;
+  padding: 0 0 4px;
 }
 
 /* 扫码弹窗 */

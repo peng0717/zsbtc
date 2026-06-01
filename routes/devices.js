@@ -35,16 +35,17 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // POST /api/devices
 router.post('/', authMiddleware, requireAdmin, async (req, res) => {
-  const { name, model, category, total, description, image, qr_code } = req.body;
+  const { name, model, category, total, description, image, qr_code, qr_codes } = req.body;
   if (!name) {
     return res.json({ success: false, message: '设备名称不能为空' });
   }
   const t = total ? parseInt(total) : 1;
   const now = getNow();
-  let finalQrCode = qr_code || '';
+  // 优先使用 qr_codes（逗号分隔的多二维码），其次 qr_code，最后为空自动生成
+  let finalQrCode = qr_codes || qr_code || '';
 
   if (finalQrCode) {
-    // 使用前端传入的 qr_code
+    // 使用前端传入的 qr_codes/qr_code
     const result = await run(
       'INSERT INTO devices (name, model, category, total, available, description, image, qr_code, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [name, model || '', category || '', t, t, description || '', image || '', finalQrCode, 'normal', now]
@@ -119,7 +120,7 @@ router.patch('/:id/normal', authMiddleware, requireAdmin, async (req, res) => {
 
 // GET /api/devices/by-qr/:qrCode
 router.get('/by-qr/:qrCode', authMiddleware, async (req, res) => {
-  const device = await get('SELECT * FROM devices WHERE qr_code = ? AND status != ?', [req.params.qrCode, 'deleted']);
+  const device = await get('SELECT * FROM devices WHERE qr_code LIKE ? AND status != ?', [`%${req.params.qrCode}%`, 'deleted']);
   if (!device) {
     return res.json({ success: false, message: '设备不存在或已删除' });
   }
