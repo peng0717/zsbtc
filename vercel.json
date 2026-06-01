@@ -2,7 +2,6 @@
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/uploads/(.*)", "destination": "/api" },
-    { "source": "/7174672d7e8d09f506e86f6fcfa01059.txt", "destination": "/7174672d7e8d09f506e86f6fcfa01059.txt" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
