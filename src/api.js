@@ -56,6 +56,7 @@ export const api = {
     })
   },
   searchDevices: (keyword) => http.get('/devices/search', { params: { keyword } }),
+  generateQrCode: (deviceName) => http.post('/devices/qr-generate', { deviceName }),
   searchUsers: (keyword) => http.get('/users/search', { params: { keyword } }),
   adminBorrow: (data) => http.post('/borrows/admin', data),
   getDashboard: () => http.get('/dashboard'),

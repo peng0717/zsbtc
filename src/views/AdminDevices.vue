@@ -3,7 +3,6 @@
     <van-nav-bar title="设备管理" left-text="返回" left-arrow @click-left="$router.push('/home')">
       <template #right>
         <van-button size="small" type="primary" @click="showAdd = true">添加</van-button>
-        <van-button size="small" type="success" @click="onScanLink" style="margin-left:8px">扫码关联</van-button>
       </template>
     </van-nav-bar>
 
@@ -49,6 +48,11 @@
         </van-field>
         <van-field v-model="form.total" label="总数" type="number" placeholder="请输入" />
         <van-field v-model="form.description" label="描述" placeholder="请输入" type="textarea" rows="2" />
+        <van-field v-model="form.qr_code" label="设备二维码" placeholder="可扫码/生成自动填入，也支持手动输入" clearable />
+        <div class="qr-actions">
+          <van-button size="small" type="primary" plain @click="openQrScanner">扫描设备二维码</van-button>
+          <van-button size="small" type="warning" plain @click="onGenerateQr">生成二维码</van-button>
+        </div>
         <div class="image-field">
           <label class="image-field-label">设备图片</label>
           <input ref="imageInput" type="file" accept="image/*" @change="onImagePicked" hidden />
@@ -109,14 +113,27 @@
       <van-tabbar-item icon="exchange" to="/admin/borrow-return">借还管理</van-tabbar-item>
       <van-tabbar-item icon="add-o" to="/admin/borrow">辅助登记</van-tabbar-item>
     </van-tabbar>
+
+    <!-- 扫码弹窗 -->
+    <van-popup v-model:show="showScanner" position="bottom" :style="{ height: '65%' }" round @closed="onScannerClosed">
+      <div class="scanner-popup">
+        <div class="scanner-header">
+          <span>扫描设备二维码</span>
+          <van-icon name="cross" size="20" @click="closeScanner" />
+        </div>
+        <div id="admin-qr-reader" class="admin-qr-reader"></div>
+        <div class="scanner-tip">将设备上的二维码对准框内</div>
+      </div>
+    </van-popup>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { showToast, showConfirmDialog, showLoadingToast, closeToast } from 'vant'
 import { api } from '../api.js'
+import { Html5Qrcode } from 'html5-qrcode'
 
 const route = useRoute()
 const tabbarActive = ref(0)
@@ -158,7 +175,7 @@ const onCatEditConfirm = (v) => {
   showCatEdit.value = false
 }
 
-const form = ref({ name: '', model: '', category: '', total: 1, description: '' })
+const form = ref({ name: '', model: '', category: '', total: 1, description: '', qr_code: '' })
 const editForm = ref({ id: '', name: '', model: '', category: '', total: 1, description: '' })
 const imageFile = ref(null)
 const imagePreview = ref('')
@@ -183,7 +200,7 @@ const fetchDevices = async () => {
 }
 
 const resetForm = () => {
-  form.value = { name: '', model: '', category: '', total: 1, description: '' }
+  form.value = { name: '', model: '', category: '', total: 1, description: '', qr_code: '' }
   imageFile.value = null
   imagePreview.value = ''
 }
@@ -317,35 +334,72 @@ const onDeleteDevice = async (item) => {
   } catch (e) {}
 }
 
-const onScanLink = async () => {
-  if (devices.value.length === 0) {
-    showToast('暂无设备可关联')
-    return
-  }
-  // 弹出设备选择，扫描关联
-  const items = devices.value.map(d => ({ name: `${d.name}（${d.model || '无型号'}）`, value: d.id }))
-  const pickerValues = items.map(i => i.value)
+// ========== 扫码 & 生成二维码 ==========
 
-  // 使用简单的交互：对第一个设备进行扫码关联作为示例
-  // 实际场景中扫码后获取 qrCodeData 传给后端
-  const device = devices.value[0]
+const showScanner = ref(false)
+let html5QrScanner = null
+
+const openQrScanner = async () => {
+  showScanner.value = true
+  await nextTick()
   try {
-    showLoadingToast({ message: '生成二维码...', forbidClick: true })
-    const res = await api.scanLinkDevice({ deviceId: device.id })
+    html5QrScanner = new Html5Qrcode('admin-qr-reader')
+    await html5QrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 250, height: 250 } },
+      (decodedText) => {
+        form.value.qr_code = decodedText
+        closeScanner()
+        showToast('扫码成功')
+      },
+      () => {}
+    )
+  } catch (e) {
+    showToast('无法启动摄像头，请检查权限或手动输入')
+    showScanner.value = false
+  }
+}
+
+const closeScanner = async () => {
+  if (html5QrScanner) {
+    try { await html5QrScanner.stop() } catch (e) {}
+    html5QrScanner = null
+  }
+  showScanner.value = false
+}
+
+const onScannerClosed = () => {
+  if (html5QrScanner) {
+    try { html5QrScanner.stop() } catch (e) {}
+    html5QrScanner = null
+  }
+}
+
+const onGenerateQr = async () => {
+  try {
+    showLoadingToast({ message: '生成中...', forbidClick: true })
+    const res = await api.generateQrCode(form.value.name || '设备')
     closeToast()
     if (res.success) {
-      showToast(`已为"${device.name}"生成二维码标识`)
-      fetchDevices()
+      form.value.qr_code = res.data.qr_code
+      showToast('二维码标识已生成')
     } else {
       showToast(res.message)
     }
   } catch (e) {
     closeToast()
-    showToast('扫码关联失败')
+    showToast('生成失败')
   }
 }
 
 onMounted(fetchDevices)
+
+onUnmounted(() => {
+  if (html5QrScanner) {
+    try { html5QrScanner.stop() } catch (e) {}
+    html5QrScanner = null
+  }
+})
 </script>
 
 <style scoped>
@@ -478,6 +532,46 @@ onMounted(fetchDevices)
   justify-content: center;
   cursor: pointer;
   font-size: 12px;
+}
+
+/* 二维码操作 */
+.qr-actions {
+  display: flex;
+  gap: 10px;
+  padding: 8px 16px 4px;
+}
+
+/* 扫码弹窗 */
+.scanner-popup {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.scanner-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #f0f0f0;
+  flex-shrink: 0;
+}
+
+.admin-qr-reader {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.scanner-tip {
+  text-align: center;
+  padding: 12px 0 20px;
+  font-size: 13px;
+  color: #999;
+  flex-shrink: 0;
 }
 </style>
 （内容由AI生成，仅供参考）

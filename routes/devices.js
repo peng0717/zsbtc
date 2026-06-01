@@ -35,21 +35,40 @@ router.get('/', authMiddleware, async (req, res) => {
 
 // POST /api/devices
 router.post('/', authMiddleware, requireAdmin, async (req, res) => {
-  const { name, model, category, total, description, image } = req.body;
+  const { name, model, category, total, description, image, qr_code } = req.body;
   if (!name) {
     return res.json({ success: false, message: '设备名称不能为空' });
   }
   const t = total ? parseInt(total) : 1;
   const now = getNow();
+  let finalQrCode = qr_code || '';
+
+  if (finalQrCode) {
+    // 使用前端传入的 qr_code
+    const result = await run(
+      'INSERT INTO devices (name, model, category, total, available, description, image, qr_code, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name, model || '', category || '', t, t, description || '', image || '', finalQrCode, 'normal', now]
+    );
+    const deviceId = result.lastInsertRowid;
+    return res.json({ success: true, message: '添加成功', data: { id: deviceId, qr_code: finalQrCode } });
+  }
+
+  // 未传 qr_code 时自动生成
   const result = await run(
     'INSERT INTO devices (name, model, category, total, available, description, image, qr_code, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [name, model || '', category || '', t, t, description || '', image || '', '', 'normal', now]
   );
   const deviceId = result.lastInsertRowid;
-  // 自动生成 qr_code
-  const qrCode = Buffer.from(`DEV-${deviceId}-${Date.now()}`).toString('base64');
-  await run('UPDATE devices SET qr_code = ? WHERE id = ?', [qrCode, deviceId]);
-  return res.json({ success: true, message: '添加成功', data: { id: deviceId, qr_code: qrCode } });
+  finalQrCode = Buffer.from(`DEV-${deviceId}-${Date.now()}`).toString('base64');
+  await run('UPDATE devices SET qr_code = ? WHERE id = ?', [finalQrCode, deviceId]);
+  return res.json({ success: true, message: '添加成功', data: { id: deviceId, qr_code: finalQrCode } });
+});
+
+// POST /api/devices/qr-generate
+router.post('/qr-generate', authMiddleware, requireAdmin, async (req, res) => {
+  const { deviceName } = req.body;
+  const qrCode = 'DEV-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  return res.json({ success: true, data: { qr_code: qrCode } });
 });
 
 // PUT /api/devices/:id

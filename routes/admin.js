@@ -71,7 +71,7 @@ router.post('/users', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: false, message: '学工号和姓名不能为空' });
   }
   if (!password) {
-    return res.json({ success: false, message: '密码为必填项' });
+    return res.status(400).json({ success: false, message: '密码为必填项' });
   }
   const exist = await get('SELECT id FROM users WHERE username = ?', [username]);
   if (exist) {
