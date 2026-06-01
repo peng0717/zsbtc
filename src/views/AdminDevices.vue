@@ -115,7 +115,7 @@
     </van-tabbar>
 
     <!-- 扫码弹窗 -->
-    <van-popup v-model:show="showScanner" position="bottom" :style="{ height: '65%' }" round @closed="onScannerClosed">
+    <van-popup v-model:show="showScanner" position="bottom" :style="{ height: '100%' }" @closed="onScannerClosed">
       <div class="scanner-popup">
         <div class="scanner-header">
           <span>扫描设备二维码</span>
