@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const { get, all, run, getNow } = require('../db');
 const { authMiddleware, requireAdmin } = require('../app-middleware');
-const { sendApprovalNotify } = require('../utils/wechat');
 
 // POST /api/borrows
 router.post('/', authMiddleware, async (req, res) => {
