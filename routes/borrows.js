@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { get, all, run, getNow } = require('../db');
 const { authMiddleware, requireAdmin } = require('../app-middleware');
+const { sendApprovalNotify } = require('../utils/wechat');
 
 // POST /api/borrows
 router.post('/', authMiddleware, async (req, res) => {
@@ -61,6 +62,8 @@ router.post('/', authMiddleware, async (req, res) => {
   );
 
   await run('UPDATE devices SET available = available - ? WHERE id = ?', [q, device_id]);
+
+  sendApprovalNotify(device.name, user.name, now).catch(() => {});
 
   return res.json({ success: true, message: '借用申请已提交，请等待审批' });
 });
