@@ -110,12 +110,11 @@
     </div>
 
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
-      <van-tabbar-item icon="chart-trending-o" to="/admin/dashboard">看板</van-tabbar-item>
       <van-tabbar-item icon="wap-home-o" to="/admin/devices">设备管理</van-tabbar-item>
       <van-tabbar-item icon="friends-o" to="/admin/users">用户管理</van-tabbar-item>
       <van-tabbar-item icon="checked" to="/admin/approval">借用审批</van-tabbar-item>
-      <van-tabbar-item icon="logistics" to="/admin/return">归还管理</van-tabbar-item>
-      <van-tabbar-item icon="add-o" to="/admin/borrow">辅助登记</van-tabbar-item>
+      <van-tabbar-item icon="exchange-o" to="/admin/borrow-return">借还管理</van-tabbar-item>
+      <van-tabbar-item icon="orders-o" to="/admin/borrow">辅助登记</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -127,14 +126,13 @@ import { showToast } from 'vant'
 import { api } from '../api.js'
 
 const route = useRoute()
-const tabbarActive = ref(5)
+const tabbarActive = ref(4)
 watch(() => route.path, (val) => {
-  if (val === '/admin/dashboard') tabbarActive.value = 0
-  else if (val === '/admin/devices') tabbarActive.value = 1
-  else if (val === '/admin/users') tabbarActive.value = 2
-  else if (val === '/admin/approval') tabbarActive.value = 3
-  else if (val === '/admin/return') tabbarActive.value = 4
-  else if (val === '/admin/borrow') tabbarActive.value = 5
+  if (val === '/admin/devices') tabbarActive.value = 0
+  else if (val === '/admin/users') tabbarActive.value = 1
+  else if (val === '/admin/approval') tabbarActive.value = 2
+  else if (val === '/admin/borrow-return') tabbarActive.value = 3
+  else if (val === '/admin/borrow') tabbarActive.value = 4
 }, { immediate: true })
 
 const username = ref('')

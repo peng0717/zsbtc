@@ -80,16 +80,31 @@
       <van-empty v-if="!loading && records.length === 0" :description="userStore.isAdmin ? '当前无设备借出' : '暂无记录'" />
     </van-list>
 
+    <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
+      <van-tabbar-item icon="home-o" to="/home">首页</van-tabbar-item>
+      <van-tabbar-item icon="notes-o" to="/my-borrows">借出列表</van-tabbar-item>
+      <van-tabbar-item v-if="userStore.isAdmin" icon="setting-o" to="/admin/devices">管理</van-tabbar-item>
+    </van-tabbar>
+
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { api } from '../api.js'
 import { useUserStore } from '../stores/user.js'
 
+const route = useRoute()
 const userStore = useUserStore()
+
+const tabbarActive = ref(1)
+watch(() => route.path, (val) => {
+  if (val === '/home') tabbarActive.value = 0
+  else if (val === '/my-borrows') tabbarActive.value = 1
+}, { immediate: true })
+
 const activeTab = ref('all')
 const records = ref([])
 const loading = ref(false)
@@ -158,7 +173,7 @@ onMounted(fetchRecords)
 </script>
 
 <style scoped>
-.my-borrows { padding-bottom: 20px; }
+.my-borrows { padding-bottom: 60px; }
 
 .record-card {
   background: var(--surface);

@@ -1,6 +1,6 @@
 <template>
   <div class="page-container home-page">
-    <van-nav-bar title="设备列表" fixed placeholder>
+    <van-nav-bar title="设备借用系统" fixed placeholder>
       <template #left>
         <div class="nav-user">
           <span class="nav-avatar" @click="showProfile = true">{{ (userStore.name || 'U')[0] }}</span>
@@ -12,43 +12,59 @@
       </template>
     </van-nav-bar>
 
-    <van-search v-model="keyword" placeholder="搜索设备名称或型号..." @search="onSearch" shape="round" />
-
-    <van-tabs v-model:active="activeTab" @change="onTabChange" sticky offset-top="46" color="#1e5dc9" title-active-color="#1e5dc9">
-      <van-tab v-for="cat in categories" :key="cat.value" :title="cat.label" :name="cat.value" />
-    </van-tabs>
-
-    <div class="device-list">
-      <div
-        v-for="item in filteredDevices"
-        :key="item.id"
-        class="device-card"
-        @click="goDetail(item.id)"
-      >
-        <div class="device-thumb">
-          <img :src="item.image || placeholderImg" :alt="item.name" />
+    <!-- 看板统计卡片 -->
+    <div class="dash-cards">
+      <div class="dash-card">
+        <div class="dash-card-icon dash-icon-blue">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         </div>
-        <div class="device-body">
-          <div class="device-name">{{ item.name }}</div>
-          <div class="device-meta">
-            <span v-if="item.model" class="device-model">{{ item.model }}</span>
-            <span class="device-cat">{{ item.category }}</span>
-          </div>
-          <div class="device-stock">
-            <span class="stock-bar">
-              <span class="stock-fill" :style="{ width: stockPercent(item) + '%' }"></span>
-            </span>
-            <span class="stock-text" :class="item.available === 0 ? 'stock-out' : ''">
-              可借 {{ item.available }} / {{ item.total }}
-            </span>
-          </div>
+        <div class="dash-card-num">{{ stats.totalDevices }}</div>
+        <div class="dash-card-label">设备总数</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-icon dash-icon-green">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="8.5" cy="7" r="4"/><path d="M20 8v6M23 11h-6"/></svg>
         </div>
-        <div class="device-arrow">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="#c0c0d0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div class="dash-card-num">{{ stats.borrowedCount }}</div>
+        <div class="dash-card-label">借用中</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-icon dash-icon-purple">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="dash-card-num">{{ stats.todayBorrows }}</div>
+        <div class="dash-card-label">今日借用</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-icon dash-icon-red">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="dash-card-num">{{ stats.overdueCount }}</div>
+        <div class="dash-card-label">逾期数量</div>
+      </div>
+    </div>
+
+    <!-- 快捷入口 -->
+    <div class="dash-quick">
+      <h3 class="quick-title">快捷入口</h3>
+      <div class="quick-grid">
+        <div class="quick-item" @click="$router.push('/admin/devices')">
+          <van-icon name="wap-home-o" size="22" />
+          <span>设备管理</span>
+        </div>
+        <div class="quick-item" @click="$router.push('/admin/users')">
+          <van-icon name="friends-o" size="22" />
+          <span>用户管理</span>
+        </div>
+        <div class="quick-item" @click="$router.push('/admin/approval')">
+          <van-icon name="checked" size="22" />
+          <span>借用审批</span>
+        </div>
+        <div class="quick-item" @click="$router.push('/admin/borrow-return')">
+          <van-icon name="exchange-o" size="22" />
+          <span>借还管理</span>
         </div>
       </div>
-
-      <van-empty v-if="filteredDevices.length === 0 && !loading" description="暂无设备" />
     </div>
 
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
@@ -86,20 +102,6 @@ import { useUserStore } from '../stores/user.js'
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
-const keyword = ref('')
-const activeTab = ref('all')
-const devices = ref([])
-const loading = ref(true)
-
-const placeholderImg = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjZjBmMmY2Ii8+PHRleHQgeD0iNDAiIHk9IjQ0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYjBjMGQwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMiI+5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
-
-const categories = computed(() => {
-  const cats = [...new Set(devices.value.map(d => d.category).filter(Boolean))]
-  return [
-    { label: '全部', value: 'all' },
-    ...cats.map(c => ({ label: c, value: c }))
-  ]
-})
 
 const tabbarActive = ref(0)
 watch(() => route.path, (val) => {
@@ -107,32 +109,19 @@ watch(() => route.path, (val) => {
   else if (val === '/my-borrows') tabbarActive.value = 1
 }, { immediate: true })
 
-const filteredDevices = computed(() => {
-  let list = devices.value
-  if (activeTab.value !== 'all') list = list.filter(d => d.category === activeTab.value)
-  if (keyword.value) {
-    const kw = keyword.value.toLowerCase()
-    list = list.filter(d => d.name.toLowerCase().includes(kw) || (d.model && d.model.toLowerCase().includes(kw)))
-  }
-  return list
+const stats = ref({
+  totalDevices: 0,
+  borrowedCount: 0,
+  todayBorrows: 0,
+  overdueCount: 0
 })
 
-const stockPercent = (item) => {
-  if (item.total <= 0) return 0
-  return Math.round((item.available / item.total) * 100)
-}
-
-const fetchDevices = async () => {
-  loading.value = true
+const fetchStats = async () => {
   try {
-    const res = await api.getDevices({ status: 'normal' })
-    if (res.success) devices.value = res.data
-  } catch (e) {} finally { loading.value = false }
+    const res = await api.getDashboard()
+    if (res.success) stats.value = res.data
+  } catch (e) {}
 }
-
-const onSearch = () => {}
-const onTabChange = () => {}
-const goDetail = (id) => router.push(`/device/${id}`)
 
 const goScan = () => router.push('/scan')
 
@@ -219,7 +208,7 @@ const onUpdateProfile = async () => {
   }
 }
 
-onMounted(fetchDevices)
+onMounted(fetchStats)
 </script>
 
 <style scoped>
@@ -240,81 +229,77 @@ onMounted(fetchDevices)
 .nav-scan { color: var(--primary); cursor: pointer; }
 .nav-logout { color: var(--text-secondary); cursor: pointer; }
 
-.device-list { padding: 4px 16px 16px; }
+.dash-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 16px;
+}
 
-.device-card {
+.dash-card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 20px 16px;
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+.dash-card-icon {
+  width: 48px; height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  margin: 0 auto 10px;
+}
+.dash-icon-blue   { background: #e8f0fe; color: #1e5dc9; }
+.dash-icon-green  { background: #e8f5eb; color: #1a7f3e; }
+.dash-icon-purple { background: #f3e8ff; color: #7c3aed; }
+.dash-icon-red    { background: #fef0f0; color: #c92a2a; }
+
+.dash-card-num {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+}
+.dash-card-label {
+  font-size: 13px;
+  color: var(--text-hint);
+  margin-top: 4px;
+}
+
+.dash-quick {
+  margin: 0 16px;
   background: var(--surface);
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 10px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-  cursor: pointer;
-  transition: box-shadow 0.2s var(--ease), transform 0.2s var(--ease);
-  gap: 12px;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
 }
-.device-card:active {
-  box-shadow: 0 4px 14px rgba(0,0,0,0.06);
-  transform: scale(0.99);
-}
-
-.device-thumb {
-  width: 64px; height: 64px;
-  border-radius: 10px;
-  overflow: hidden;
-  flex-shrink: 0;
-  background: #f5f6fa;
-}
-.device-thumb img {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-
-.device-body { flex: 1; min-width: 0; }
-.device-name {
+.quick-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.3;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin: 0 0 14px;
 }
-.device-meta {
+.quick-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 12px;
+}
+.quick-item {
   display: flex;
-  gap: 8px;
-  margin-top: 4px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 8px;
+  border-radius: 10px;
+  background: #f7f8fb;
+  color: var(--text-secondary);
   font-size: 12px;
-  color: var(--text-hint);
+  cursor: pointer;
+  transition: background 0.15s;
 }
-.device-cat {
-  background: var(--primary-soft);
-  color: var(--primary);
-  padding: 1px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 500;
-}
-
-.device-stock { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
-.stock-bar {
-  width: 80px; height: 4px;
-  background: #e8e9ee;
-  border-radius: 2px;
-  overflow: hidden;
-  flex-shrink: 0;
-}
-.stock-fill {
-  height: 100%;
-  background: var(--primary);
-  border-radius: 2px;
-  transition: width 0.4s var(--ease);
-}
-.stock-text { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
-.stock-out { color: var(--danger); font-weight: 600; }
-
-.device-arrow { flex-shrink: 0; margin-left: 4px; }
+.quick-item:active { background: #eef1f7; }
 
 .profile-form { padding: 4px 0; }
 
