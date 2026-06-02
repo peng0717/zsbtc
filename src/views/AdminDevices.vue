@@ -581,6 +581,8 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
+  max-height: 120px;
+  overflow-y: auto;
 }
 
 .qr-tag {
