@@ -72,11 +72,7 @@ app.use('/api/auth', loginLimiter, require('./routes/auth'));
 app.use('/api/devices', require('./routes/devices'));
 app.use('/api/borrows', require('./routes/borrows'));
 app.use('/api', require('./routes/admin'));
-app.use('/api', require('./routes/repairs'));
 app.use('/api', require('./routes/export'));
-app.use('/api', require('./routes/maintenance'));
-app.use('/api', require('./routes/credits'));
-
 // ========== 文件上传 ==========
 if (upload) {
   const { authMiddleware } = require('./app-middleware');
@@ -140,63 +136,6 @@ async function initDB() {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token_hash TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
-  // users 表补充 credit_score 字段
-  try { await run('ALTER TABLE users ADD COLUMN credit_score INTEGER DEFAULT 100'); } catch (_) {}
-
-  // 报修记录表
-  await run(`CREATE TABLE IF NOT EXISTS repair_reports (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    device_id INTEGER NOT NULL,
-    user_id INTEGER NOT NULL,
-    issue_type TEXT NOT NULL,
-    description TEXT NOT NULL,
-    images TEXT DEFAULT '',
-    status TEXT DEFAULT 'pending',
-    handler_id INTEGER,
-    handle_remark TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now')),
-    updated_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (device_id) REFERENCES devices(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  )`);
-
-  // 维护计划表
-  await run(`CREATE TABLE IF NOT EXISTS maintenance_plans (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    device_id INTEGER NOT NULL,
-    plan_name TEXT NOT NULL,
-    frequency_days INTEGER NOT NULL,
-    description TEXT DEFAULT '',
-    last_maintained_at TEXT,
-    next_maintain_at TEXT,
-    status TEXT DEFAULT 'active',
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (device_id) REFERENCES devices(id)
-  )`);
-
-  // 维护日志表
-  await run(`CREATE TABLE IF NOT EXISTS maintenance_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    plan_id INTEGER,
-    device_id INTEGER NOT NULL,
-    handler_id INTEGER NOT NULL,
-    result TEXT DEFAULT '',
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (plan_id) REFERENCES maintenance_plans(id),
-    FOREIGN KEY (device_id) REFERENCES devices(id)
-  )`);
-
-  // 信用记录表
-  await run(`CREATE TABLE IF NOT EXISTS credit_records (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    borrow_id INTEGER,
-    change_amount INTEGER NOT NULL,
-    reason TEXT NOT NULL,
-    created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
   // 种子数据：管理员（从环境变量读取，未配置则跳过）

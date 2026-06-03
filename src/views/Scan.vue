@@ -27,7 +27,6 @@
         </div>
         <div v-if="matchStatus === 'single' && matchedDevice" class="result-actions">
           <van-button type="primary" round block @click="goBorrow">立即借用</van-button>
-          <van-button type="default" round block style="margin-top:8px" @click="goRepair">设备报修</van-button>
         </div>
         <div v-else-if="matchStatus === 'multiple'" class="result-multi">
           <p>找到多个匹配设备，请选择：</p>
@@ -185,11 +184,6 @@ const onResultConfirm = () => {
 const goBorrow = () => {
   showResult.value = false
   if (matchedDevice.value) router.push(`/borrow/${matchedDevice.value.id}`)
-}
-
-const goRepair = () => {
-  showResult.value = false
-  if (matchedDevice.value) router.push(`/repair/${matchedDevice.value.id}`)
 }
 
 const manualSearch = async () => {

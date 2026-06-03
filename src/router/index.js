@@ -8,9 +8,7 @@ const routes = [
   { path: '/device/:id', component: () => import('../views/DeviceDetail.vue'), meta: { auth: true } },
   { path: '/borrow/:deviceId', component: () => import('../views/Borrow.vue'), meta: { auth: true } },
   { path: '/scan', component: () => import('../views/Scan.vue'), meta: { auth: true } },
-  { path: '/repair/:id', component: () => import('../views/Repair.vue'), meta: { auth: true } },
-  { path: '/my-credits', component: () => import('../views/MyCredits.vue'), meta: { auth: true } },
-  { path: '/my-repairs', component: () => import('../views/MyRepairs.vue'), meta: { auth: true } },
+
   { path: '/my-borrows', component: () => import('../views/MyBorrows.vue'), meta: { auth: true } },
   { path: '/admin/dashboard', component: () => import('../views/AdminDashboard.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/devices', component: () => import('../views/AdminDevices.vue'), meta: { auth: true, admin: true } },
@@ -20,8 +18,6 @@ const routes = [
   { path: '/admin/borrow', component: () => import('../views/AdminBorrow.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/borrow-return', component: () => import('../views/AdminBorrowReturn.vue'), meta: { auth: true, admin: true } },
   { path: '/admin/borrowed', component: () => import('../views/AdminBorrowed.vue'), meta: { auth: true, admin: true } },
-  { path: '/admin/repairs', component: () => import('../views/AdminRepairs.vue'), meta: { auth: true, admin: true } },
-  { path: '/admin/maintenance', component: () => import('../views/AdminMaintenancePlan.vue'), meta: { auth: true, admin: true } },
   { path: '/:pathMatch(.*)*', component: () => import('../views/NotFound.vue') },
 ]
 

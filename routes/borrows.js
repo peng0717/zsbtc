@@ -11,6 +11,15 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.json({ success: false, message: '借用数量必须大于0' });
   }
 
+  // 同时只能借1台设备
+  const activeBorrows = await get(
+    "SELECT COUNT(*) as count FROM borrow_records WHERE user_id = ? AND status IN ('approved', 'borrowed', 'pending')",
+    [req.user.id]
+  );
+  if (activeBorrows && activeBorrows.count >= 1) {
+    return res.json({ success: false, message: '当前有未归还的设备，请先归还后再借' });
+  }
+
   let device = null;
   if (device_id) {
     device = await get('SELECT * FROM devices WHERE id = ?', [device_id]);
@@ -55,9 +64,11 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.json({ success: false, message: '可借数量不足' });
   }
 
+  const initialStatus = 'pending';
+
   await run(
-    "INSERT INTO borrow_records (device_id, device_name, user_id, username, qty, purpose, borrow_date, expect_return, status, type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'borrow', ?)",
-    [device_id, device.name, req.user.id, user.username, q, purpose || '', now, expect_return || '', now]
+    "INSERT INTO borrow_records (device_id, device_name, user_id, username, qty, purpose, borrow_date, expect_return, status, type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrow', ?)",
+    [device_id, device.name, req.user.id, user.username, q, purpose || '', now, expect_return || '', initialStatus, now]
   );
 
   await run('UPDATE devices SET available = available - ? WHERE id = ?', [q, device_id]);
@@ -181,36 +192,6 @@ router.put('/:id/return', authMiddleware, requireAdmin, async (req, res) => {
   const now = getNow();
   await run("UPDATE borrow_records SET status = 'returned', actual_return = ? WHERE id = ?", [now, req.params.id]);
   await run('UPDATE devices SET available = available + ? WHERE id = ?', [record.qty, record.device_id]);
-
-  // 信用体系：归还时自动计算信用分变动
-  try {
-    let creditChange = 0;
-    let creditReason = '';
-
-    // 逾期归还：扣 5 分/天，上限扣 50 分
-    if (record.expect_return && record.expect_return < now) {
-      const expectDate = new Date(record.expect_return.replace(' ', 'T') + 'Z');
-      const returnDate = new Date(now.replace(' ', 'T') + 'Z');
-      const overdueDays = Math.ceil((returnDate - expectDate) / (1000 * 60 * 60 * 24));
-      creditChange = -Math.min(overdueDays * 5, 50);
-      creditReason = `逾期归还 (${overdueDays}天)`;
-    }
-    // 提前归还：加 2 分
-    else if (record.expect_return && record.expect_return > now) {
-      creditChange = 2;
-      creditReason = '提前归还';
-    }
-
-    if (creditChange !== 0) {
-      await run(
-        'INSERT INTO credit_records (user_id, borrow_id, change_amount, reason, created_at) VALUES (?, ?, ?, ?, ?)',
-        [record.user_id, record.id, creditChange, creditReason, now]
-      );
-      await run('UPDATE users SET credit_score = credit_score + ? WHERE id = ?', [creditChange, record.user_id]);
-    }
-  } catch (e) {
-    // 信用表可能尚未创建，忽略但不影响归还
-  }
 
   return res.json({ success: true, message: '归还成功' });
 });

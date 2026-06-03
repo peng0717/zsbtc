@@ -68,30 +68,4 @@ router.get('/export/borrows', authMiddleware, requireAdmin, async (req, res) => 
   return res.send(csv);
 });
 
-// GET /api/export/repairs
-router.get('/export/repairs', authMiddleware, requireAdmin, async (req, res) => {
-  const records = await all(
-    `SELECT rr.*, d.name AS device_name, u.name AS user_name
-     FROM repair_reports rr
-     LEFT JOIN devices d ON rr.device_id = d.id
-     LEFT JOIN users u ON rr.user_id = u.id
-     ORDER BY rr.id DESC`
-  );
-  const headers = ['ID', '设备名', '报修人', '故障类型', '描述', '状态', '处理备注', '时间'];
-  const rows = records.map(r => ({
-    ID: r.id,
-    '设备名': r.device_name || '',
-    '报修人': r.user_name || '',
-    '故障类型': r.issue_type || '',
-    '描述': r.description || '',
-    '状态': r.status,
-    '处理备注': r.handle_remark || '',
-    '时间': r.created_at || ''
-  }));
-  const csv = toCSV(headers, rows);
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename=repairs.csv');
-  return res.send(csv);
-});
-
 module.exports = router;

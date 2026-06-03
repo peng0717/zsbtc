@@ -62,27 +62,8 @@ export const api = {
   getDashboard: () => http.get('/dashboard'),
   getMySummary: () => http.get('/borrows/summary'),
 
-  // 报修
-  submitRepair: (data) => http.post('/repairs', data),
-  getRepairs: (params) => http.get('/repairs', { params }),
-  getMyRepairs: () => http.get('/repairs/mine'),
-  handleRepair: (id, data) => http.put(`/repairs/${id}`, data),
-
   // 导出
   exportDevices: () => http.get('/export/devices', { responseType: 'blob' }),
   exportBorrows: (params) => http.get('/export/borrows', { params, responseType: 'blob' }),
-  exportRepairs: () => http.get('/export/repairs', { responseType: 'blob' }),
 
-  // 维护计划
-  createPlan: (data) => http.post('/maintenance/plans', data),
-  getPlans: (params) => http.get('/maintenance/plans', { params }),
-  updatePlan: (id, data) => http.put(`/maintenance/plans/${id}`, data),
-  deletePlan: (id) => http.delete(`/maintenance/plans/${id}`),
-  createLog: (data) => http.post('/maintenance/logs', data),
-  getLogs: (params) => http.get('/maintenance/logs', { params }),
-
-  // 信用体系
-  getMyCredits: () => http.get('/credits/mine'),
-  getUserCredits: (userId) => http.get(`/credits/${userId}`),
-  manualCredit: (data) => http.post('/credits/manual', data),
 }
