@@ -200,6 +200,23 @@ body {
 /* === 加载 === */
 .van-loading__spinner { color: var(--primary); }
 
+/* === Toast Loading 修复 === */
+.van-toast--loading {
+  background: var(--primary);
+  border-radius: 12px;
+  padding: 16px 24px;
+}
+.van-toast--loading .van-toast__text {
+  color: #fff !important;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+.van-toast--loading .van-loading__spinner,
+.van-toast--loading .van-loading__circular {
+  color: #fff !important;
+}
+
 /* === 公共工具类 === */
 .page-container {
   background: var(--bg);

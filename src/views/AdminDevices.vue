@@ -274,7 +274,7 @@ const removeEditImage = () => {
 const uploadThenSave = async (data, file, isEdit, id) => {
   if (uploading.value) return
   uploading.value = true
-  showLoadingToast({ message: '上传中...', forbidClick: true })
+  showLoadingToast({ message: '上传中...', forbidClick: true, loadingType: 'spinner' })
   try {
     let imageUrl = ''
     if (file) {
@@ -416,7 +416,7 @@ const onScannerClosed = () => {
 }
 
 const onGenerateQr = async () => {
-  showLoadingToast({ message: '生成中...', forbidClick: true })
+  showLoadingToast({ message: '生成中...', forbidClick: true, loadingType: 'spinner' })
   try {
     const res = await api.generateQrCode(form.value.name || '设备')
     if (res.success) {
@@ -673,6 +673,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
+  justify-content: center;
 }
 
 .scanner-header {
@@ -688,9 +689,9 @@ onUnmounted(() => {
 }
 
 .admin-qr-reader {
-  flex: 1;
   width: 100%;
-  min-height: 0;
+  aspect-ratio: 1;
+  flex-shrink: 0;
 }
 
 .scanner-tip {
