@@ -85,8 +85,10 @@ const startScan = async () => {
     await html5QrCode.start(
       { facingMode: 'environment' },
       {
-        fps: 10,
-        qrbox: { width: 250, height: 250 },
+        fps: 30,
+        qrbox: { width: 200, height: 200 },
+        aspectRatio: 1.0,
+        disableFlip: false,
       },
       onScanSuccess,
       () => {}

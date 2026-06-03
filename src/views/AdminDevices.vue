@@ -265,15 +265,12 @@ const uploadThenSave = async (data, file, isEdit, id) => {
     let imageUrl = ''
     if (file) {
       const uploadRes = await api.uploadImage(file)
-      if (uploadRes.success) {
-        imageUrl = uploadRes.data.url
-      } else {
-        closeToast()
+      if (!uploadRes.success) {
         showToast(uploadRes.message || '图片上传失败')
         return
       }
+      imageUrl = uploadRes.data.url
     }
-    closeToast()
     const res = isEdit
       ? await api.updateDevice(id, { ...data, image: imageUrl || editForm.value.image || '' })
       : await api.addDevice({ ...data, image: imageUrl })
@@ -286,9 +283,9 @@ const uploadThenSave = async (data, file, isEdit, id) => {
       showToast(res.message)
     }
   } catch (e) {
-    closeToast()
     showToast(isEdit ? '编辑失败' : '添加失败')
   } finally {
+    closeToast()
     uploading.value = false
   }
 }
@@ -370,11 +367,9 @@ const openQrScanner = async () => {
     html5QrScanner = new Html5Qrcode('admin-qr-reader')
     await html5QrScanner.start(
       { facingMode: 'environment' },
-      { fps: 20, qrbox: { width: 250, height: 250 }, experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
+      { fps: 30, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0, disableFlip: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
       (decodedText) => {
-        if (!form.value.qr_codes.includes(decodedText)) {
-          form.value.qr_codes.push(decodedText)
-        }
+        form.value.qr_codes = [...new Set([...form.value.qr_codes, decodedText])]
         closeScanner()
         showToast('扫码成功')
       },
@@ -402,10 +397,9 @@ const onScannerClosed = () => {
 }
 
 const onGenerateQr = async () => {
+  showLoadingToast({ message: '生成中...', forbidClick: true })
   try {
-    showLoadingToast({ message: '生成中...', forbidClick: true })
     const res = await api.generateQrCode(form.value.name || '设备')
-    closeToast()
     if (res.success) {
       if (!form.value.qr_codes.includes(res.data.qr_code)) {
         form.value.qr_codes.push(res.data.qr_code)
@@ -415,8 +409,9 @@ const onGenerateQr = async () => {
       showToast(res.message)
     }
   } catch (e) {
-    closeToast()
     showToast('生成失败')
+  } finally {
+    closeToast()
   }
 }
 
@@ -591,8 +586,8 @@ onUnmounted(() => {
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
-  max-height: 120px;
-  overflow-y: auto;
+  max-height: 120px !important;
+  overflow-y: auto !important;
 }
 
 .qr-tag {
@@ -673,6 +668,14 @@ onUnmounted(() => {
   font-size: 13px;
   color: #999;
   flex-shrink: 0;
+}
+
+/* 防止弹窗内容溢出，确保按钮固定在底部 */
+:deep(.van-dialog) {
+  overflow: hidden;
+}
+:deep(.van-dialog__content) {
+  overflow: hidden;
 }
 </style>
 （内容由AI生成，仅供参考）

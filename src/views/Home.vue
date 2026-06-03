@@ -1,6 +1,6 @@
 <template>
   <div class="page-container home-page">
-    <van-nav-bar title="设备借用系统" fixed placeholder>
+    <van-nav-bar title="设备管理系统" fixed placeholder>
       <template #left>
         <div class="nav-user">
           <span class="nav-avatar" @click="showProfile = true">{{ (userStore.name || 'U')[0] }}</span>
@@ -255,7 +255,6 @@ const onUpdateProfile = async () => {
 
 onMounted(() => {
   fetchSummary()
-  fetchCredit()
   fetchDevices()
 })
 </script>
