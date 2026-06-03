@@ -19,8 +19,12 @@
             </span>
           </div>
           <div class="user-phone" v-if="u.phone">{{ u.phone }}</div>
+          <div class="user-credit">
+            信用分：<span class="credit-num" :class="u.credit_score >= 80 ? 'credit-high' : 'credit-low'">{{ u.credit_score ?? 100 }}</span>
+          </div>
         </div>
         <div class="user-actions">
+          <button class="act-btn act-credit" @click="openCredit(u)">信用</button>
           <button class="act-btn act-edit" @click="openEdit(u)">编辑</button>
           <button
             v-if="u.status === 'active'"
@@ -62,12 +66,43 @@
       <van-picker :columns="roles" @confirm="(v) => { editForm.role = v.selectedValues[0]; showRoleEdit = false }" @cancel="showRoleEdit = false" />
     </van-popup>
 
+    <!-- 信用记录弹窗 -->
+    <van-dialog v-model:show="showCredit" :title="creditUser?.name + ' 的信用记录'" close-on-click-overlay>
+      <div class="credit-dialog">
+        <div class="credit-score-row">当前信用分：<strong class="credit-num-big">{{ creditScore }}</strong></div>
+        <div style="padding:0 16px 8px">
+          <button class="act-btn act-add-credit" @click="showCreditForm = true">手动加减分</button>
+        </div>
+        <div class="credit-records">
+          <div v-for="r in creditRecords" :key="r.id" class="credit-record">
+            <div class="cr-row">
+              <span class="cr-reason">{{ r.reason }}</span>
+              <span class="cr-amount" :class="r.change_amount > 0 ? 'cr-positive' : 'cr-negative'">
+                {{ r.change_amount > 0 ? '+' : '' }}{{ r.change_amount }}
+              </span>
+            </div>
+            <div class="cr-time">{{ r.created_at }}</div>
+          </div>
+          <van-empty v-if="creditRecords.length === 0" description="暂无信用记录" />
+        </div>
+      </div>
+    </van-dialog>
+
+    <!-- 手动加减分弹窗 -->
+    <van-dialog v-model:show="showCreditForm" title="手动调整信用分" show-cancel-button @confirm="onCreditManual">
+      <div class="dialog-form">
+        <van-field v-model="creditForm.change_amount" label="分数变动" type="number" placeholder="正数加分，负数扣分" />
+        <van-field v-model="creditForm.reason" label="原因" placeholder="调整原因" />
+      </div>
+    </van-dialog>
+
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
       <van-tabbar-item icon="wap-home-o" to="/admin/devices">设备管理</van-tabbar-item>
       <van-tabbar-item icon="friends-o" to="/admin/users">用户管理</van-tabbar-item>
       <van-tabbar-item icon="certificate" to="/admin/approval">借用审批</van-tabbar-item>
       <van-tabbar-item icon="exchange" to="/admin/borrow-return">借还管理</van-tabbar-item>
-      <van-tabbar-item icon="add-o" to="/admin/borrow">辅助登记</van-tabbar-item>
+      <van-tabbar-item icon="records-o" to="/admin/repairs">报修</van-tabbar-item>
+      <van-tabbar-item icon="todo-list-o" to="/admin/maintenance">维护</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -85,7 +120,8 @@ watch(() => route.path, (val) => {
   else if (val === '/admin/users') tabbarActive.value = 1
   else if (val === '/admin/approval') tabbarActive.value = 2
   else if (val === '/admin/borrow-return') tabbarActive.value = 3
-  else if (val === '/admin/borrow') tabbarActive.value = 4
+  else if (val === '/admin/repairs') tabbarActive.value = 4
+  else if (val === '/admin/maintenance') tabbarActive.value = 5
 }, { immediate: true })
 
 const users = ref([])
@@ -155,6 +191,51 @@ const enableUser = async (id) => {
 }
 
 onMounted(fetchUsers)
+
+// --- 信用体系 ---
+const showCredit = ref(false)
+const showCreditForm = ref(false)
+const creditUser = ref(null)
+const creditScore = ref(0)
+const creditRecords = ref([])
+const creditForm = ref({ change_amount: '', reason: '' })
+
+const openCredit = async (u) => {
+  creditUser.value = u
+  creditScore.value = u.credit_score ?? 100
+  showCredit.value = true
+  try {
+    const res = await api.getUserCredits(u.id)
+    if (res.success) creditRecords.value = res.data
+  } catch (e) { creditRecords.value = [] }
+}
+
+const onCreditManual = async () => {
+  if (!creditForm.value.change_amount || !creditForm.value.reason) {
+    showToast('请填写完整信息')
+    return
+  }
+  try {
+    const res = await api.manualCredit({
+      user_id: creditUser.value.id,
+      change_amount: parseInt(creditForm.value.change_amount),
+      reason: creditForm.value.reason
+    })
+    if (res.success) {
+      showToast('调整成功')
+      showCreditForm.value = false
+      creditScore.value += parseInt(creditForm.value.change_amount)
+      creditForm.value = { change_amount: '', reason: '' }
+      // 刷新记录
+      const r = await api.getUserCredits(creditUser.value.id)
+      if (r.success) creditRecords.value = r.data
+      // 刷新用户列表中的信用分
+      fetchUsers()
+    } else {
+      showToast(res.message)
+    }
+  } catch (e) { showToast('操作失败') }
+}
 </script>
 
 <style scoped>
@@ -210,6 +291,11 @@ onMounted(fetchUsers)
 .status-disabled { background: #fef0f0; color: #c92a2a; }
 .user-phone { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
 
+.user-credit { font-size: 12px; color: var(--text-hint); margin-top: 2px; }
+.credit-num { font-weight: 600; }
+.credit-high { color: var(--success); }
+.credit-low  { color: var(--danger); }
+
 .user-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .act-btn {
   padding: 5px 12px;
@@ -224,9 +310,30 @@ onMounted(fetchUsers)
 }
 .act-btn:active { transform: scale(0.96); }
 .act-edit    { border-color: var(--primary); color: var(--primary); }
+.act-credit  { border-color: #e0a000; color: #e0a000; }
 .act-disable { border-color: var(--danger); color: var(--danger); }
 .act-enable  { border-color: var(--success); color: var(--success); }
 
 .dialog-form { padding: 4px 0; }
+
+.credit-dialog { padding: 8px 0; max-height: 50vh; overflow-y: auto; }
+.credit-score-row { text-align: center; font-size: 15px; padding: 8px 16px 12px; color: var(--text); }
+.credit-num-big { font-size: 22px; color: var(--primary); }
+
+.act-add-credit {
+  padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+  font-family: var(--font); border: 1.5px solid #e0a000; color: #e0a000;
+  background: var(--surface); cursor: pointer; width: 100%;
+}
+
+.credit-records { padding: 0 16px 8px; }
+.credit-record { padding: 10px 0; border-bottom: 1px solid var(--divider); }
+.credit-record:last-child { border-bottom: none; }
+.cr-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+.cr-reason { color: var(--text); flex: 1; }
+.cr-amount { font-weight: 600; flex-shrink: 0; }
+.cr-positive { color: var(--success); }
+.cr-negative { color: var(--danger); }
+.cr-time { font-size: 11px; color: var(--text-hint); margin-top: 3px; }
 </style>
 （内容由AI生成，仅供参考）

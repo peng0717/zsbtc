@@ -2,7 +2,8 @@
   <div class="page-container admin-borrow-return">
     <van-nav-bar title="借还管理" left-text="返回" left-arrow @click-left="$router.back()">
       <template #right>
-        <van-icon name="scan" size="22" @click="$router.push('/scan')" class="nav-scan" />
+        <van-button size="small" type="default" @click="exportBorrows">导出</van-button>
+        <van-icon name="scan" size="22" @click="$router.push('/scan')" class="nav-scan" style="margin-left:6px" />
       </template>
     </van-nav-bar>
 
@@ -99,7 +100,8 @@
       <van-tabbar-item icon="friends-o" to="/admin/users">用户管理</van-tabbar-item>
       <van-tabbar-item icon="certificate" to="/admin/approval">借用审批</van-tabbar-item>
       <van-tabbar-item icon="exchange" to="/admin/borrow-return">借还管理</van-tabbar-item>
-      <van-tabbar-item icon="add-o" to="/admin/borrow">辅助登记</van-tabbar-item>
+      <van-tabbar-item icon="records-o" to="/admin/repairs">报修</van-tabbar-item>
+      <van-tabbar-item icon="todo-list-o" to="/admin/maintenance">维护</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -119,7 +121,8 @@ watch(() => route.path, (val) => {
   else if (val === '/admin/users') tabbarActive.value = 1
   else if (val === '/admin/approval') tabbarActive.value = 2
   else if (val === '/admin/borrow-return') tabbarActive.value = 3
-  else if (val === '/admin/borrow') tabbarActive.value = 4
+  else if (val === '/admin/repairs') tabbarActive.value = 4
+  else if (val === '/admin/maintenance') tabbarActive.value = 5
 }, { immediate: true })
 
 // 借出中
@@ -180,6 +183,17 @@ onMounted(() => {
   fetchBorrowed()
   fetchReturn()
 })
+
+const exportBorrows = async () => {
+  try {
+    const blob = await api.exportBorrows()
+    const url = URL.createObjectURL(new Blob([blob], { type: 'text/csv;charset=utf-8' }))
+    const a = document.createElement('a')
+    a.href = url; a.download = 'borrows.csv'; a.click()
+    URL.revokeObjectURL(url)
+    showToast('导出成功')
+  } catch (e) { showToast('导出失败') }
+}
 </script>
 
 <style scoped>

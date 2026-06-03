@@ -114,7 +114,8 @@
       <van-tabbar-item icon="friends-o" to="/admin/users">用户管理</van-tabbar-item>
       <van-tabbar-item icon="certificate" to="/admin/approval">借用审批</van-tabbar-item>
       <van-tabbar-item icon="exchange" to="/admin/borrow-return">借还管理</van-tabbar-item>
-      <van-tabbar-item icon="add-o" to="/admin/borrow">辅助登记</van-tabbar-item>
+      <van-tabbar-item icon="records-o" to="/admin/repairs">报修</van-tabbar-item>
+      <van-tabbar-item icon="todo-list-o" to="/admin/maintenance">维护</van-tabbar-item>
     </van-tabbar>
   </div>
 </template>
@@ -132,7 +133,8 @@ watch(() => route.path, (val) => {
   else if (val === '/admin/users') tabbarActive.value = 1
   else if (val === '/admin/approval') tabbarActive.value = 2
   else if (val === '/admin/borrow-return') tabbarActive.value = 3
-  else if (val === '/admin/borrow') tabbarActive.value = 4
+  else if (val === '/admin/repairs') tabbarActive.value = 4
+  else if (val === '/admin/maintenance') tabbarActive.value = 5
 }, { immediate: true })
 
 const username = ref('')

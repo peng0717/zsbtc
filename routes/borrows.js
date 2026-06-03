@@ -182,6 +182,36 @@ router.put('/:id/return', authMiddleware, requireAdmin, async (req, res) => {
   await run("UPDATE borrow_records SET status = 'returned', actual_return = ? WHERE id = ?", [now, req.params.id]);
   await run('UPDATE devices SET available = available + ? WHERE id = ?', [record.qty, record.device_id]);
 
+  // 信用体系：归还时自动计算信用分变动
+  try {
+    let creditChange = 0;
+    let creditReason = '';
+
+    // 逾期归还：扣 5 分/天，上限扣 50 分
+    if (record.expect_return && record.expect_return < now) {
+      const expectDate = new Date(record.expect_return.replace(' ', 'T') + 'Z');
+      const returnDate = new Date(now.replace(' ', 'T') + 'Z');
+      const overdueDays = Math.ceil((returnDate - expectDate) / (1000 * 60 * 60 * 24));
+      creditChange = -Math.min(overdueDays * 5, 50);
+      creditReason = `逾期归还 (${overdueDays}天)`;
+    }
+    // 提前归还：加 2 分
+    else if (record.expect_return && record.expect_return > now) {
+      creditChange = 2;
+      creditReason = '提前归还';
+    }
+
+    if (creditChange !== 0) {
+      await run(
+        'INSERT INTO credit_records (user_id, borrow_id, change_amount, reason, created_at) VALUES (?, ?, ?, ?, ?)',
+        [record.user_id, record.id, creditChange, creditReason, now]
+      );
+      await run('UPDATE users SET credit_score = credit_score + ? WHERE id = ?', [creditChange, record.user_id]);
+    }
+  } catch (e) {
+    // 信用表可能尚未创建，忽略但不影响归还
+  }
+
   return res.json({ success: true, message: '归还成功' });
 });
 

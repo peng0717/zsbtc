@@ -34,6 +34,18 @@
       </div>
     </div>
 
+    <!-- 信用分 -->
+    <div class="credit-card" @click="$router.push('/my-credits')">
+      <div class="credit-inner">
+        <span class="credit-label">信用分</span>
+        <span class="credit-value" :class="creditScore >= 80 ? 'credit-high' : 'credit-low'">{{ creditScore }}</span>
+      </div>
+      <div class="credit-bar">
+        <div class="credit-bar-fill" :style="{ width: Math.min(creditScore, 100) + '%' }" :class="creditScore >= 80 ? 'bar-high' : 'bar-low'"></div>
+      </div>
+      <van-icon name="arrow" class="credit-arrow" />
+    </div>
+
     <!-- 设备分类 + 搜索 -->
     <van-tabs v-model:active="activeCat" sticky color="#1e5dc9" title-active-color="#1e5dc9">
       <van-tab v-for="cat in categories" :key="cat" :title="cat" :name="cat" />
@@ -67,6 +79,7 @@
     <van-tabbar v-model="tabbarActive" :fixed="true" :placeholder="true">
       <van-tabbar-item icon="home-o" to="/home">首页</van-tabbar-item>
       <van-tabbar-item icon="notes-o" to="/my-borrows">借出列表</van-tabbar-item>
+      <van-tabbar-item icon="records-o" to="/my-repairs">我的报修</van-tabbar-item>
       <van-tabbar-item v-if="userStore.isAdmin" icon="setting-o" to="/admin/devices">管理</van-tabbar-item>
     </van-tabbar>
 
@@ -104,6 +117,8 @@ const tabbarActive = ref(0)
 watch(() => route.path, (val) => {
   if (val === '/home') tabbarActive.value = 0
   else if (val === '/my-borrows') tabbarActive.value = 1
+  else if (val === '/my-repairs') tabbarActive.value = 2
+  else if (val.startsWith('/admin')) tabbarActive.value = 3
 }, { immediate: true })
 
 // 个人借用摘要
@@ -113,6 +128,15 @@ const fetchSummary = async () => {
   try {
     const res = await api.getMySummary()
     if (res.success) summary.value = res.data
+  } catch (e) {}
+}
+
+// 信用分
+const creditScore = ref(100)
+const fetchCredit = async () => {
+  try {
+    const res = await api.getMyCredits()
+    if (res.success) creditScore.value = res.credit_score ?? 100
   } catch (e) {}
 }
 
@@ -254,6 +278,7 @@ const onUpdateProfile = async () => {
 
 onMounted(() => {
   fetchSummary()
+  fetchCredit()
   fetchDevices()
 })
 </script>
@@ -326,6 +351,35 @@ onMounted(() => {
   color: var(--text-hint);
   margin-top: 4px;
 }
+
+/* 信用分 */
+.credit-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 16px 12px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 12px 14px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+.credit-inner { display: flex; align-items: center; gap: 8px; }
+.credit-label { font-size: 13px; color: var(--text-hint); }
+.credit-value { font-size: 22px; font-weight: 700; }
+.credit-high { color: #1a7f3e; }
+.credit-low  { color: #c92a2a; }
+.credit-bar {
+  flex: 1;
+  height: 6px;
+  background: #e8e9ee;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.credit-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.bar-high { background: linear-gradient(90deg, #2ecc71, #1a7f3e); }
+.bar-low  { background: linear-gradient(90deg, #e74c3c, #c92a2a); }
+.credit-arrow { color: #c0c4cc; flex-shrink: 0; }
 
 /* 设备列表 */
 .device-list { padding: 0 16px 16px; }
