@@ -58,7 +58,7 @@
             </span>
           </div>
           <div class="qr-input-row">
-            <input v-model="manualQrInput" class="qr-manual-input" placeholder="手动输入二维码编号" />
+            <input v-model="manualQrInput" class="qr-manual-input" placeholder="手动输入二维码编号" @keyup.enter="addManualQr" />
             <van-button size="small" type="default" @click="addManualQr">添加</van-button>
           </div>
           <div class="qr-actions">
@@ -95,6 +95,19 @@
         </van-field>
         <van-field v-model="editForm.total" label="总数" type="number" />
         <van-field v-model="editForm.description" label="描述" type="textarea" rows="2" />
+        <div class="qr-field">
+          <label class="qr-field-label">设备二维码</label>
+          <div class="qr-tags" v-if="editForm.qr_codes && editForm.qr_codes.length">
+            <span v-for="(code, idx) in editForm.qr_codes" :key="idx" class="qr-tag">
+              {{ code }}
+              <van-icon name="cross" class="qr-tag-remove" @click="editForm.qr_codes.splice(idx, 1)" />
+            </span>
+          </div>
+          <div class="qr-input-row">
+            <input v-model="editManualQrInput" class="qr-manual-input" placeholder="手动输入二维码编号" @keyup.enter="addEditManualQr" />
+            <van-button size="small" type="default" @click="addEditManualQr">添加</van-button>
+          </div>
+        </div>
         <div class="image-field">
           <label class="image-field-label">设备图片</label>
           <input ref="editImageInput" type="file" accept="image/*" @change="onEditImagePicked" hidden />
@@ -187,13 +200,14 @@ const onCatEditConfirm = (v) => {
 }
 
 const form = ref({ name: '', model: '', category: '', total: 1, description: '', qr_codes: [] })
-const editForm = ref({ id: '', name: '', model: '', category: '', total: 1, description: '' })
+const editForm = ref({ id: '', name: '', model: '', category: '', total: 1, description: '', qr_codes: [] })
 const imageFile = ref(null)
 const imagePreview = ref('')
 const editImageFile = ref(null)
 const editImagePreview = ref('')
 const uploading = ref(false)
 const manualQrInput = ref('')
+const editManualQrInput = ref('')
 
 const statusText = (s) => ({ normal: '正常', maintenance: '维修中', retired: '已下架' }[s] || s)
 
@@ -300,17 +314,20 @@ const onAddDevice = async () => {
 }
 
 const openEdit = (item) => {
-  editForm.value = { ...item, total: String(item.total) }
+  const qrCodes = item.qr_code ? item.qr_code.split(',').filter(Boolean) : []
+  editForm.value = { ...item, total: String(item.total), qr_codes: qrCodes }
   editImageFile.value = null
   editImagePreview.value = item.image
     ? (item.image.startsWith('http') ? item.image : `http://${window.location.hostname}:3001${item.image}`)
     : ''
+  editManualQrInput.value = ''
   showEdit.value = true
 }
 
 const onEditDevice = async () => {
+  const qrCodesStr = editForm.value.qr_codes ? editForm.value.qr_codes.join(',') : ''
   await uploadThenSave(
-    { ...editForm.value, total: parseInt(editForm.value.total) || 1 },
+    { ...editForm.value, total: parseInt(editForm.value.total) || 1, qr_codes: qrCodesStr },
     editImageFile.value,
     true,
     editForm.value.id
@@ -369,9 +386,11 @@ const openQrScanner = async () => {
       { facingMode: 'environment' },
       { fps: 30, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0, disableFlip: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
       (decodedText) => {
-        form.value.qr_codes = [...new Set([...form.value.qr_codes, decodedText])]
-        closeScanner()
-        showToast('扫码成功')
+        if (!form.value.qr_codes.includes(decodedText)) {
+          form.value.qr_codes.push(decodedText)
+          showToast('已扫码')
+        }
+        // 继续扫描，不关闭——支持连续扫多个二维码
       },
       () => {}
     )
@@ -424,6 +443,18 @@ const addManualQr = () => {
   }
   form.value.qr_codes.push(val)
   manualQrInput.value = ''
+}
+
+const addEditManualQr = () => {
+  const val = editManualQrInput.value.trim()
+  if (!val) return
+  if (!editForm.value.qr_codes) editForm.value.qr_codes = []
+  if (editForm.value.qr_codes.includes(val)) {
+    showToast('该二维码已存在')
+    return
+  }
+  editForm.value.qr_codes.push(val)
+  editManualQrInput.value = ''
 }
 
 onMounted(fetchDevices)
@@ -672,10 +703,16 @@ onUnmounted(() => {
 
 /* 防止弹窗内容溢出，确保按钮固定在底部 */
 :deep(.van-dialog) {
-  overflow: hidden;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
 }
 :deep(.van-dialog__content) {
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: 65vh;
+}
+.dialog-form {
+  overflow-y: auto;
 }
 </style>
 （内容由AI生成，仅供参考）

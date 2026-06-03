@@ -74,16 +74,17 @@ router.post('/qr-generate', authMiddleware, requireAdmin, async (req, res) => {
 
 // PUT /api/devices/:id
 router.put('/:id', authMiddleware, requireAdmin, async (req, res) => {
-  const { name, model, category, total, description, image } = req.body;
+  const { name, model, category, total, description, image, qr_codes } = req.body;
   const device = await get('SELECT * FROM devices WHERE id = ?', [req.params.id]);
   if (!device) {
     return res.json({ success: false, message: '设备不存在' });
   }
   const t = total ? parseInt(total) : device.total;
   const newAvailable = Math.max(0, device.available + (t - device.total));
+  const finalQrCode = qr_codes !== undefined ? qr_codes : device.qr_code;
   await run(
-    'UPDATE devices SET name = ?, model = ?, category = ?, total = ?, available = ?, description = ?, image = ? WHERE id = ?',
-    [name, model || '', category || '', t, newAvailable, description || '', image || '', req.params.id]
+    'UPDATE devices SET name = ?, model = ?, category = ?, total = ?, available = ?, description = ?, image = ?, qr_code = ? WHERE id = ?',
+    [name, model || '', category || '', t, newAvailable, description || '', image || '', finalQrCode, req.params.id]
   );
   return res.json({ success: true, message: '编辑成功' });
 });
