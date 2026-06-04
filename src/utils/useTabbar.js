@@ -23,14 +23,3 @@ export function useTabbarWatch(tabbarActive, routeMap) {
     }
   }, { immediate: true })
 }
-
-/**
- * 反转 map 的 key/value → value/key，用于根据索引取路径
- */
-export function invertMap(map) {
-  const result = {}
-  for (const [k, v] of Object.entries(map)) {
-    result[v] = k
-  }
-  return result
-}

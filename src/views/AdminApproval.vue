@@ -63,11 +63,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { showToast } from 'vant'
 import { api } from '../api.js'
-
-const route = useRoute()
+import { useTabbarWatch } from '../utils/useTabbar.js'
 const tabbarActive = ref(2)
 useTabbarWatch(tabbarActive, {
   '/admin/devices': 0, '/admin/users': 1, '/admin/approval': 2, '/admin/borrow-return': 3, '/admin/borrowed': 4, '/admin/return': 5

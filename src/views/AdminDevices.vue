@@ -160,8 +160,7 @@ import { showToast, showConfirmDialog, showLoadingToast, closeToast } from 'vant
 import { api } from '../api.js'
 import { Html5Qrcode } from 'html5-qrcode'
 import { getImgUrl, placeholderImg } from '../utils/image.js'
-
-const route = useRoute()
+import { useTabbarWatch } from '../utils/useTabbar.js'
 const tabbarActive = ref(0)
 useTabbarWatch(tabbarActive, {
   '/admin/devices': 0, '/admin/users': 1, '/admin/approval': 2, '/admin/borrow-return': 3, '/admin/borrowed': 4, '/admin/return': 5

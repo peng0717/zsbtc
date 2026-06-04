@@ -109,11 +109,9 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { api } from '../api.js'
-
-const route = useRoute()
+import { useTabbarWatch } from '../utils/useTabbar.js'
 const activeTab = ref('borrowed')
 
 const tabbarActive = ref(3)

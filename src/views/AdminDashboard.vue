@@ -66,10 +66,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { api } from '../api.js'
-
-const route = useRoute()
+import { useTabbarWatch } from '../utils/useTabbar.js'
 const tabbarActive = ref(0)
 useTabbarWatch(tabbarActive, {
   '/admin/dashboard': 0
