@@ -4,22 +4,40 @@ const { createClient } = require('@libsql/client');
 const TURSO_URL = (process.env.TURSO_URL || '').replace(/^\uFEFF/, '');
 const TURSO_TOKEN = (process.env.TURSO_TOKEN || '').replace(/^\uFEFF/, '');
 
-if (!TURSO_URL) {
-  console.error('❌ 未配置 TURSO_URL 环境变量，无法启动数据库连接');
-  process.exit(1);
-}
-if (!TURSO_TOKEN) {
-  console.error('❌ 未配置 TURSO_TOKEN 环境变量，无法启动数据库连接');
-  process.exit(1);
-}
+let client = null;
+let clientError = null;
+let initAttempted = false;
 
-const client = createClient({
-  url: TURSO_URL,
-  authToken: TURSO_TOKEN
-});
+function getClient() {
+  if (initAttempted) {
+    if (clientError) throw clientError;
+    return client;
+  }
+  initAttempted = true;
+
+  if (!TURSO_URL) {
+    clientError = new Error('TURSO_URL 环境变量未配置');
+    throw clientError;
+  }
+  if (!TURSO_TOKEN) {
+    clientError = new Error('TURSO_TOKEN 环境变量未配置');
+    throw clientError;
+  }
+  try {
+    client = createClient({
+      url: TURSO_URL,
+      authToken: TURSO_TOKEN
+    });
+  } catch (e) {
+    clientError = new Error(`Turso 客户端初始化失败: ${e.message}`);
+    throw clientError;
+  }
+  return client;
+}
 
 async function tursoFetch(sql, params = []) {
-  const rs = await client.execute({ sql, args: params });
+  const c = getClient();
+  const rs = await c.execute({ sql, args: params });
   return {
     rows: rs.rows.map(row => {
       const obj = {};

@@ -5,7 +5,7 @@ const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
 const router = express.Router();
 const { get, run, getNow } = require('../db');
-const { authMiddleware, validatePassword } = require('../app-middleware');
+const { authMiddleware, validatePassword, requireAdmin } = require('../app-middleware');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 

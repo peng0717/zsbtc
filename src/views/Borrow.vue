@@ -110,7 +110,7 @@
 
     <!-- 日期选择器 -->
     <van-popup v-model:show="showDatePicker" position="bottom" round>
-      <van-datetime-picker
+      <van-date-picker
         v-model="currentDate"
         type="date"
         :min-date="minDate"
