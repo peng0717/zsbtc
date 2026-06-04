@@ -160,21 +160,6 @@ router.get('/by-qr/:qrCode', authMiddleware, async (req, res) => {
   return res.json({ success: true, data: device });
 });
 
-// POST /api/devices/scan-link
-router.post('/scan-link', authMiddleware, requireAdmin, async (req, res) => {
-  const { deviceId } = req.body;
-  if (!deviceId) {
-    return res.json({ success: false, message: '设备ID不能为空' });
-  }
-  const device = await get('SELECT * FROM devices WHERE id = ?', [deviceId]);
-  if (!device) {
-    return res.json({ success: false, message: '设备不存在' });
-  }
-  const qrCode = Buffer.from(`DEV-${deviceId}-${Date.now()}`).toString('base64');
-  await run('UPDATE devices SET qr_code = ? WHERE id = ?', [qrCode, deviceId]);
-  return res.json({ success: true, data: { id: deviceId, qr_code: qrCode } });
-});
-
 // DELETE /api/devices/:id (软删除)
 router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
   const device = await get('SELECT * FROM devices WHERE id = ?', [req.params.id]);
@@ -188,54 +173,6 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
     detail: `删除设备 ${device.name}`
   });
   return res.json({ success: true, message: '已删除' });
-});
-
-// ===== 批量操作 =====
-// PATCH /api/devices/batch
-router.patch('/batch', authMiddleware, requireAdmin, async (req, res) => {
-  const { ids, status, remark } = req.body;
-  if (!Array.isArray(ids) || ids.length === 0) {
-    return res.json({ success: false, message: '请提供设备ID列表' });
-  }
-  const validStatuses = ['retired', 'maintenance', 'normal'];
-  if (!validStatuses.includes(status)) {
-    return res.json({ success: false, message: '状态值不合法' });
-  }
-  if (ids.length > 50) {
-    return res.json({ success: false, message: '单次批量操作不超过50台设备' });
-  }
-
-  const placeholders = ids.map(() => '?').join(',');
-  const result = await run(
-    `UPDATE devices SET status = ? WHERE id IN (${placeholders})`,
-    [status, ...ids]
-  );
-
-  const actionMap = { retired: '批量下架', maintenance: '批量报修', normal: '批量恢复' };
-  await auditLog({
-    userId: req.user.id, username: req.user.username,
-    action: actionMap[status], targetType: 'device', targetId: null,
-    detail: `${actionMap[status]} ${ids.length} 台设备${remark ? '，备注: ' + remark : ''}`
-  });
-
-  return res.json({ success: true, message: `成功更新 ${result.rowsAffected} 台设备状态为 ${status}` });
-});
-
-// GET /api/devices/:id/history
-router.get('/:id/history', authMiddleware, async (req, res) => {
-  const device = await get('SELECT * FROM devices WHERE id = ?', [req.params.id]);
-  if (!device) {
-    return res.json({ success: false, message: '设备不存在' });
-  }
-  const records = await all(
-    `SELECT br.*, u.name AS borrower_name 
-     FROM borrow_records br 
-     LEFT JOIN users u ON br.user_id = u.id 
-     WHERE br.device_id = ? 
-     ORDER BY br.id DESC`,
-    [req.params.id]
-  );
-  return res.json({ success: true, data: records });
 });
 
 module.exports = router;

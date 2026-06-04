@@ -159,49 +159,4 @@ router.patch('/users/:id/enable', authMiddleware, requireAdmin, async (req, res)
   return res.json({ success: true, message: '已启用' });
 });
 
-// GET /api/admin/audit-logs
-router.get('/audit-logs', authMiddleware, requireAdmin, async (req, res) => {
-  const page = Math.max(1, parseInt(req.query.page) || 1);
-  const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize) || 20));
-  const offset = (page - 1) * pageSize;
-
-  let conditions = [];
-  let params = [];
-
-  if (req.query.action) {
-    conditions.push('action LIKE ?');
-    params.push(`%${req.query.action}%`);
-  }
-  if (req.query.username) {
-    conditions.push('username = ?');
-    params.push(req.query.username);
-  }
-  if (req.query.targetType) {
-    conditions.push('target_type = ?');
-    params.push(req.query.targetType);
-  }
-
-  const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
-
-  const countResult = await get(
-    `SELECT COUNT(*) as total FROM audit_logs${whereClause}`,
-    params
-  );
-  const total = countResult?.total || 0;
-
-  const logs = await all(
-    `SELECT * FROM audit_logs${whereClause} ORDER BY id DESC LIMIT ? OFFSET ?`,
-    [...params, pageSize, offset]
-  );
-
-  return res.json({
-    success: true,
-    data: logs,
-    total,
-    page,
-    pageSize,
-    totalPages: Math.ceil(total / pageSize)
-  });
-});
-
 module.exports = router;

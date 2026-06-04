@@ -123,22 +123,4 @@ router.post('/logout', authMiddleware, async (req, res) => {
   return res.json({ success: true, message: '已退出登录' });
 });
 
-// POST /api/auth/reset-password
-router.post('/reset-password', authMiddleware, requireAdmin, async (req, res) => {
-  const { user_id, new_password } = req.body;
-  if (!user_id || !new_password) {
-    return res.json({ success: false, message: '缺少参数' });
-  }
-  if (new_password.length < 6) {
-    return res.json({ success: false, message: '密码至少6位' });
-  }
-  const user = await get('SELECT id, username FROM users WHERE id = ?', [user_id]);
-  if (!user) {
-    return res.json({ success: false, message: '用户不存在' });
-  }
-  const hash = crypto.createHash('sha256').update(new_password).digest('hex');
-  await run('UPDATE users SET password = ? WHERE id = ?', [hash, user_id]);
-  return res.json({ success: true, message: '密码重置成功' });
-});
-
 module.exports = router;
