@@ -11,9 +11,9 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.json({ success: false, message: '借用数量必须大于0' });
   }
 
-  // 同时只能借1台设备
+  // 同时只能借1台设备（pending 不占用名额，允许在审批期间提交其他申请）
   const activeBorrows = await get(
-    "SELECT COUNT(*) as count FROM borrow_records WHERE user_id = ? AND status IN ('approved', 'borrowed', 'pending')",
+    "SELECT COUNT(*) as count FROM borrow_records WHERE user_id = ? AND status IN ('approved', 'borrowed')",
     [req.user.id]
   );
   if (activeBorrows && activeBorrows.count >= 1) {

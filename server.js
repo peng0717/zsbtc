@@ -74,14 +74,12 @@ app.use('/api/borrows', require('./routes/borrows'));
 app.use('/api', require('./routes/admin'));
 app.use('/api', require('./routes/export'));
 // ========== 文件上传 ==========
-if (upload) {
-  const { authMiddleware } = require('./app-middleware');
-  app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
-    if (!req.file) return res.json({ success: false, message: '请选择图片' });
-    const url = `/uploads/${req.file.filename}`;
-    return res.json({ success: true, data: { url } });
-  });
-}
+const { authMiddleware } = require('./app-middleware');
+app.post('/api/upload', authMiddleware, upload.single('image'), (req, res) => {
+  if (!req.file) return res.json({ success: false, message: '请选择图片' });
+  const url = `/uploads/${req.file.filename}`;
+  return res.json({ success: true, data: { url } });
+});
 
 // ========== 数据库初始化 ==========
 async function initDB() {

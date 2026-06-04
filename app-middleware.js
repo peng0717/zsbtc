@@ -64,12 +64,16 @@ function requestLogger(req, res, next) {
 
 // ========== 全局错误处理 ==========
 function globalErrorHandler(err, req, res, next) {
+  // 记录完整错误到日志（仅服务端可见），不暴露给客户端
   logger.error({ err }, 'API错误');
-  const isDev = !process.env.VERCEL && process.env.NODE_ENV !== 'production';
   const statusCode = err.status || err.statusCode || 500;
+  // 仅开发模式下返回安全的错误信息，生产环境始终返回通用文案
+  const safeMessage = process.env.NODE_ENV === 'development'
+    ? err.message
+    : '服务器内部错误，请稍后重试';
   res.status(statusCode).json({
     code: statusCode,
-    message: isDev ? err.message : '服务器内部错误，请稍后重试'
+    message: safeMessage
   });
 }
 
