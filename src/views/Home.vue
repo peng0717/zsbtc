@@ -62,7 +62,12 @@
         </div>
         <van-icon name="arrow" class="device-arrow" />
       </div>
-      <van-empty v-if="!loadingDevices && filteredDevices.length === 0" description="暂无设备" />
+      <van-empty v-if="!loadingDevices && errorDevices" description="加载失败" image="error">
+        <template #default>
+          <van-button round type="primary" size="small" @click="fetchDevices">点击重试</van-button>
+        </template>
+      </van-empty>
+      <van-empty v-else-if="!loadingDevices && filteredDevices.length === 0" description="暂无设备" />
     </div>
 
     <!-- 底部 tabbar -->
@@ -125,6 +130,7 @@ const fetchSummary = async () => {
 // 设备列表
 const devices = ref([])
 const loadingDevices = ref(false)
+const errorDevices = ref(false)
 const searchKey = ref('')
 const activeCat = ref('全部')
 
@@ -153,10 +159,11 @@ const statusText = (s) => ({ normal: '正常', maintenance: '维修中', retired
 
 const fetchDevices = async () => {
   loadingDevices.value = true
+  errorDevices.value = false
   try {
     const res = await api.getDevices()
     if (res.success) devices.value = res.data
-  } catch (e) { console.error('获取设备列表失败:', e) } finally {
+  } catch (e) { console.error('获取设备列表失败:', e); errorDevices.value = true } finally {
     loadingDevices.value = false
   }
 }

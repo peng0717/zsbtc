@@ -40,7 +40,10 @@
           </button>
         </div>
       </div>
-      <van-empty v-if="!loading && records.length === 0" description="暂无待审批记录" />
+      <van-empty v-if="!loading && error" description="加载失败" image="error">
+        <van-button round type="primary" size="small" @click="fetchRecords">点击重试</van-button>
+      </van-empty>
+      <van-empty v-else-if="!loading && records.length === 0" description="暂无待审批记录" />
     </van-list>
 
     <van-dialog v-model:show="showReject" title="拒绝原因" show-cancel-button @confirm="onReject">
@@ -72,6 +75,7 @@ useTabbarWatch(tabbarActive, {
 
 const records = ref([])
 const loading = ref(false)
+const error = ref(false)
 const finished = ref(false)
 const showReject = ref(false)
 const rejectReason = ref('')
@@ -80,6 +84,7 @@ const approving = ref(false)
 
 const fetchRecords = async () => {
   loading.value = true
+  error.value = false
   try {
     const [res1, res2] = await Promise.all([
       api.getBorrows({ status: 'pending' }),
@@ -90,7 +95,7 @@ const fetchRecords = async () => {
     if (res2.success) data.push(...res2.data)
     records.value = data
     finished.value = true
-  } catch (e) { console.error('获取审批列表失败:', e) } finally { loading.value = false }
+  } catch (e) { console.error('获取审批列表失败:', e); error.value = true } finally { loading.value = false }
 }
 
 const onApprove = async (id) => {

@@ -91,7 +91,10 @@
           </div>
           <button class="return-btn" @click="onReturn(r.id)">确认归还</button>
         </div>
-        <van-empty v-if="!loadingReturn && returnRecords.length === 0" description="暂无待归还记录" />
+        <van-empty v-if="!loadingReturn && errorReturn" description="加载失败" image="error">
+          <van-button round type="primary" size="small" @click="fetchReturn">点击重试</van-button>
+        </van-empty>
+        <van-empty v-else-if="!loadingReturn && returnRecords.length === 0" description="暂无待归还记录" />
       </van-list>
     </div>
 
@@ -140,6 +143,7 @@ const fetchBorrowed = async () => {
 // 待归还
 const returnRecords = ref([])
 const loadingReturn = ref(false)
+const errorReturn = ref(false)
 const finishedReturn = ref(false)
 const returning = ref(false)
 
@@ -151,6 +155,7 @@ const isOverdueReturn = (r) => {
 
 const fetchReturn = async () => {
   loadingReturn.value = true
+  errorReturn.value = false
   try {
     const [res1, res2] = await Promise.all([
       api.getBorrows({ status: 'approved' }),
@@ -161,7 +166,7 @@ const fetchReturn = async () => {
     if (res2.success) data.push(...res2.data)
     returnRecords.value = data
     finishedReturn.value = true
-  } catch (e) { console.error('获取归还列表失败:', e) } finally { loadingReturn.value = false }
+  } catch (e) { console.error('获取归还列表失败:', e); errorReturn.value = true } finally { loadingReturn.value = false }
 }
 
 const onReturn = async (id) => {
