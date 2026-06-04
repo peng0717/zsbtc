@@ -200,7 +200,9 @@ watch(showProfile, async (val) => {
         profileForm.name = res.data.name
         profileForm.phone = res.data.phone || ''
       }
-    } catch (e) {}
+    } catch (e) {
+      console.error('获取个人信息失败:', e)
+    }
   }
 })
 

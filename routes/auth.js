@@ -55,6 +55,14 @@ router.post('/register', registerLimiter, async (req, res) => {
     return res.json({ success: false, message: '学工号、姓名和密码不能为空' });
   }
 
+  // 字段长度校验
+  if (username.length > 30 || name.length > 50) {
+    return res.json({ success: false, message: '学工号或姓名过长' });
+  }
+  if (phone && phone.length > 20) {
+    return res.json({ success: false, message: '手机号格式不正确' });
+  }
+
   // 密码复杂度校验
   const pwdError = validatePassword(password);
   if (pwdError) {

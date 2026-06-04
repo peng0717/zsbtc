@@ -39,7 +39,7 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
   if (!name) {
     return res.json({ success: false, message: '设备名称不能为空' });
   }
-  const t = total ? parseInt(total) : 1;
+  const t = Math.max(1, parseInt(total) || 1);
   const now = getNow();
   // 优先使用 qr_codes（逗号分隔的多二维码），其次 qr_code，最后为空自动生成
   let finalQrCode = qr_codes || qr_code || '';
@@ -79,8 +79,9 @@ router.put('/:id', authMiddleware, requireAdmin, async (req, res) => {
   if (!device) {
     return res.json({ success: false, message: '设备不存在' });
   }
-  const t = total ? parseInt(total) : device.total;
-  const newAvailable = Math.max(0, device.available + (t - device.total));
+  const t = total != null && total !== '' ? Math.max(0, parseInt(total) || 0) : device.total;
+  const newTotal = Math.max(0, t);
+  const newAvailable = Math.max(0, Math.min(newTotal, device.available + (newTotal - device.total)));
   const finalQrCode = qr_codes !== undefined ? qr_codes : device.qr_code;
   await run(
     'UPDATE devices SET name = ?, model = ?, category = ?, total = ?, available = ?, description = ?, image = ?, qr_code = ? WHERE id = ?',

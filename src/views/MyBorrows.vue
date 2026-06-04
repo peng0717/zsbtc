@@ -143,7 +143,9 @@ const fetchRecords = async () => {
       if (res.success) records.value = res.data
     }
     finished.value = true
-  } catch (e) {} finally { loading.value = false }
+  } catch (e) {
+    console.error('获取借用记录失败:', e)
+  } finally { loading.value = false }
 }
 
 const onTabChange = () => {

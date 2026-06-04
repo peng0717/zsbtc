@@ -47,7 +47,7 @@
             <van-icon name="arrow-down" @click="showCat = true" />
           </template>
         </van-field>
-        <van-field v-model="form.total" label="总数" type="number" placeholder="请输入" />
+        <van-field v-model="form.total" label="总数" type="number" min="1" placeholder="请输入" />
         <van-field v-model="form.description" label="描述" placeholder="请输入" type="textarea" rows="2" />
         <div class="qr-field">
           <label class="qr-field-label">设备二维码</label>
@@ -93,7 +93,7 @@
             <van-icon name="arrow-down" @click="showCatEdit = true" />
           </template>
         </van-field>
-        <van-field v-model="editForm.total" label="总数" type="number" />
+        <van-field v-model="editForm.total" label="总数" type="number" min="1" />
         <van-field v-model="editForm.description" label="描述" type="textarea" rows="2" />
         <div class="qr-field">
           <label class="qr-field-label">设备二维码</label>
@@ -159,6 +159,7 @@ import { useRoute } from 'vue-router'
 import { showToast, showConfirmDialog, showLoadingToast, closeToast } from 'vant'
 import { api } from '../api.js'
 import { Html5Qrcode } from 'html5-qrcode'
+import { getImgUrl, placeholderImg } from '../utils/image.js'
 
 const route = useRoute()
 const tabbarActive = ref(0)
@@ -178,7 +179,6 @@ const categories = computed(() => {
   const cats = [...new Set(devices.value.map(d => d.category).filter(Boolean))]
   return [...cats, '自定义']
 })
-const placeholderImg = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZjBmMmY2Ii8+PHRleHQgeD0iMzAiIHk9IjM0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYjBjMGQwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCI+5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
 
 const onCatConfirm = (v) => {
   const sel = v.selectedValues?.[0] || v.selectedOptions?.[0]?.text || ''
@@ -211,18 +211,13 @@ const editManualQrInput = ref('')
 
 const statusText = (s) => ({ normal: '正常', maintenance: '维修中', retired: '已下架' }[s] || s)
 
-const host = window.location.hostname
-const getImgUrl = (img) => {
-  if (!img) return ''
-  if (img.startsWith('http') || img.startsWith('data:')) return img
-  return `http://${host}:3001${img}`
-}
-
 const fetchDevices = async () => {
   try {
     const res = await api.getDevices()
     if (res.success) devices.value = res.data
-  } catch (e) {}
+  } catch (e) {
+    console.error('获取设备列表失败:', e)
+  }
 }
 
 const exportDevices = async () => {
@@ -317,9 +312,7 @@ const openEdit = (item) => {
   const qrCodes = item.qr_code ? item.qr_code.split(',').filter(Boolean) : []
   editForm.value = { ...item, total: String(item.total), qr_codes: qrCodes }
   editImageFile.value = null
-  editImagePreview.value = item.image
-    ? (item.image.startsWith('http') ? item.image : `http://${window.location.hostname}:3001${item.image}`)
-    : ''
+  editImagePreview.value = item.image ? getImgUrl(item.image) : ''
   editManualQrInput.value = ''
   showEdit.value = true
 }

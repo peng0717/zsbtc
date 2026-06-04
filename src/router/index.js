@@ -25,6 +25,8 @@ const router = createRouter({ history: createWebHashHistory(), routes })
 
 router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
+  // 确保 Pinia store 已从 localStorage 恢复完毕，再读取 token 和 role
+  await userStore.restoreFromStorage()
   const token = userStore.token
 
   if (to.path === '/login' && token) {

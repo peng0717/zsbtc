@@ -20,10 +20,10 @@ const UPLOAD_DIR = path.join(__dirname, 'uploads');
 // ========== 确保上传目录存在 ==========
 try { if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR); } catch(e) { console.log('上传目录跳过（Vercel环境下正常）'); }
 
-// multer 在 Vercel serverless 不可用
-const multer = null;
+// multer 文件上传
 let upload = null;
-if (multer) {
+try {
+  const multer = require('multer');
   const storage = multer.diskStorage({
     destination: UPLOAD_DIR,
     filename: (req, file, cb) => {
@@ -32,6 +32,8 @@ if (multer) {
     }
   });
   upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
+} catch (e) {
+  console.warn('multer 不可用（Vercel 环境下正常），上传功能将不可用');
 }
 
 // ========== 频率限制 ==========
@@ -169,9 +171,15 @@ async function initDB() {
   }
 }
 
-initDB().catch(err => {
+const dbInitPromise = initDB().catch(err => {
   console.error('数据库初始化失败:', err);
   if (!process.env.VERCEL) process.exit(1);
+});
+
+// ========== 确保数据库初始化完成后才处理请求 ==========
+app.use(async (req, res, next) => {
+  try { await dbInitPromise; } catch (_) { /* initDB 错误已在上方记录 */ }
+  next();
 });
 
 // ========== 全局错误处理 ==========

@@ -77,7 +77,18 @@ const isOverdue = (r) => {
 const fetchRecords = async () => {
   loading.value = true
   try {
-    const res = await api.getBorrows({ status: 'approved' })
+    // 同时查询 approved 和 borrowed 两种"已借出"状态
+    const [resApproved, resBorrowed] = await Promise.all([
+      api.getBorrows({ status: 'approved' }),
+      api.getBorrows({ status: 'borrowed' })
+    ])
+    const res = {
+      success: resApproved.success || resBorrowed.success,
+      data: [
+        ...(resApproved.success ? resApproved.data : []),
+        ...(resBorrowed.success ? resBorrowed.data : [])
+      ].sort((a, b) => new Date(b.borrow_date) - new Date(a.borrow_date))
+    }
     if (res.success) records.value = res.data
     finished.value = true
   } catch (e) {} finally { loading.value = false }

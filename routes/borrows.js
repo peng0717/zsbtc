@@ -64,14 +64,25 @@ router.post('/', authMiddleware, async (req, res) => {
     return res.json({ success: false, message: '可借数量不足' });
   }
 
+  // 校验预计归还日期必须是未来时间
+  if (expect_return && expect_return < now.substring(0, 10)) {
+    return res.json({ success: false, message: '预计归还日期不能早于今天' });
+  }
+
   const initialStatus = 'pending';
 
-  await run(
+  const insertResult = await run(
     "INSERT INTO borrow_records (device_id, device_name, user_id, username, qty, purpose, borrow_date, expect_return, status, type, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'borrow', ?)",
     [device_id, device.name, req.user.id, user.username, q, purpose || '', now, expect_return || '', initialStatus, now]
   );
 
-  await run('UPDATE devices SET available = available - ? WHERE id = ?', [q, device_id]);
+  try {
+    await run('UPDATE devices SET available = available - ? WHERE id = ?', [q, device_id]);
+  } catch (e) {
+    await run('DELETE FROM borrow_records WHERE id = ?', [insertResult.lastInsertRowid]);
+    console.error('扣减库存失败，已回滚借用记录:', e);
+    return res.json({ success: false, message: '系统错误，请稍后重试' });
+  }
 
   return res.json({ success: true, message: '借用申请已提交，请等待审批' });
 });
@@ -228,6 +239,15 @@ router.post('/admin', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: false, message: '用户不存在或已被禁用' });
   }
 
+  // 检查该用户是否有未归还的设备（管理员辅助登记时也需提醒）
+  const activeBorrows = await get(
+    "SELECT COUNT(*) as count FROM borrow_records WHERE user_id = ? AND status IN ('approved', 'borrowed')",
+    [user.id]
+  );
+  if (activeBorrows && activeBorrows.count >= 1) {
+    return res.json({ success: false, message: '该用户当前有未归还的设备，请先归还后再借' });
+  }
+
   let device = null;
   if (device_id) {
     device = await get('SELECT * FROM devices WHERE id = ?', [device_id]);
@@ -256,6 +276,11 @@ router.post('/admin', authMiddleware, requireAdmin, async (req, res) => {
 
   const now = getNow();
   const borrowType = type || 'borrow';
+
+  // 校验预计归还日期必须是未来时间
+  if (expect_return && expect_return < now.substring(0, 10)) {
+    return res.json({ success: false, message: '预计归还日期不能早于今天' });
+  }
 
   await run(
     "INSERT INTO borrow_records (device_id, device_name, user_id, username, qty, purpose, borrow_date, expect_return, status, type, approver, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?)",

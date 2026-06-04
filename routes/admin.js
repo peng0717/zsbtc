@@ -60,7 +60,7 @@ router.get('/users/search', authMiddleware, requireAdmin, async (req, res) => {
 
 // GET /api/admin/users
 router.get('/users', authMiddleware, requireAdmin, async (req, res) => {
-  const users = await all('SELECT id, username, name, role, phone, status, created_at FROM users ORDER BY id');
+  const users = await all('SELECT id, username, name, role, phone, status, created_at FROM users ORDER BY id DESC LIMIT 200');
   return res.json({ success: true, data: users });
 });
 
@@ -93,7 +93,16 @@ router.put('/users/:id', authMiddleware, requireAdmin, async (req, res) => {
   if (!user) {
     return res.json({ success: false, message: '用户不存在' });
   }
-  await run('UPDATE users SET name = ?, role = ?, phone = ? WHERE id = ?', [name, role, phone || '', req.params.id]);
+  if (!name || !name.trim()) {
+    return res.json({ success: false, message: '姓名不能为空' });
+  }
+  const validRoles = ['学生', '教师', '管理员'];
+  if (role && !validRoles.includes(role)) {
+    return res.json({ success: false, message: '角色无效' });
+  }
+  const safeName = name.trim().substring(0, 50);
+  const safePhone = (phone || '').substring(0, 20);
+  await run('UPDATE users SET name = ?, role = ?, phone = ? WHERE id = ?', [safeName, role, safePhone, req.params.id]);
   return res.json({ success: true, message: '编辑成功' });
 });
 
