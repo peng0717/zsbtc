@@ -86,7 +86,7 @@ const fetchStats = async () => {
   try {
     const res = await api.getDashboard()
     if (res.success) stats.value = res.data
-  } catch (e) {}
+  } catch (e) { console.error('获取统计失败:', e) }
 }
 
 onMounted(fetchStats)

@@ -43,6 +43,8 @@
 
     <!-- 设备列表 -->
     <div class="device-list">
+      <!-- 加载骨架屏 -->
+      <van-skeleton v-for="i in 4" v-if="loadingDevices" :key="'sk-'+i" :row="2" title avatar avatar-size="64px" avatar-shape="square" class="device-skeleton" />
       <div
         v-for="d in filteredDevices"
         :key="d.id"
@@ -117,7 +119,7 @@ const fetchSummary = async () => {
   try {
     const res = await api.getMySummary()
     if (res.success) summary.value = res.data
-  } catch (e) {}
+  } catch (e) { console.error('获取借用摘要失败:', e) }
 }
 
 // 设备列表
@@ -154,7 +156,7 @@ const fetchDevices = async () => {
   try {
     const res = await api.getDevices()
     if (res.success) devices.value = res.data
-  } catch (e) {} finally {
+  } catch (e) { console.error('获取设备列表失败:', e) } finally {
     loadingDevices.value = false
   }
 }
@@ -372,4 +374,6 @@ onMounted(() => {
 }
 .pwd-strength .pass { background: #e8f5eb; color: #1a7f3e; }
 .pwd-strength .fail { background: #fef0f0; color: #c92a2a; }
+
+.device-skeleton { margin: 12px 16px; border-radius: 12px; }
 </style>

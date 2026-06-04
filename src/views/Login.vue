@@ -56,7 +56,8 @@
         </div>
         <div class="input-group">
           <label class="input-label">手机号</label>
-          <input v-model="regForm.phone" type="tel" class="input-field" placeholder="请输入手机号" maxlength="11" />
+          <input v-model="regForm.phone" type="tel" class="input-field" placeholder="请输入手机号" maxlength="11" @blur="onPhoneBlur" />
+          <p class="field-error" v-if="phoneError">{{ phoneError }}</p>
         </div>
         <div class="input-group">
           <label class="input-label">身份</label>
@@ -115,6 +116,18 @@ const pwdCheck = computed(() => ({
   digit: /[0-9]/.test(regForm.password),
 }))
 
+const phoneError = ref('')
+
+const onPhoneBlur = () => {
+  const phone = regForm.phone.trim()
+  if (!phone) { phoneError.value = ''; return }
+  if (!/^1[3-9]\d{9}$/.test(phone)) {
+    phoneError.value = '请输入正确的手机号'
+  } else {
+    phoneError.value = ''
+  }
+}
+
 const resetRegForm = () => {
   regForm.username = ''
   regForm.name = ''
@@ -122,6 +135,7 @@ const resetRegForm = () => {
   regForm.confirmPassword = ''
   regForm.phone = ''
   regForm.role = '学生'
+  phoneError.value = ''
 }
 
 const doLogin = async () => {
@@ -155,6 +169,10 @@ const onLogin = async () => {
 const onRegister = async () => {
   if (!regForm.username || !regForm.name || !regForm.password || !regForm.confirmPassword) {
     showToast('请填写所有字段')
+    return
+  }
+  if (phoneError.value) {
+    showToast(phoneError.value)
     return
   }
   const pwdErr = validatePassword(regForm.password)
@@ -361,4 +379,10 @@ const onRegister = async () => {
 }
 .pwd-strength .pass { background: #e8f5eb; color: #1a7f3e; }
 .pwd-strength .fail { background: #fef0f0; color: #c92a2a; }
+
+.field-error {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--danger);
+}
 </style>

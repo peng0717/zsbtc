@@ -80,12 +80,11 @@
             name="expectReturn"
             label="预计归还"
             placeholder="选择日期"
+            readonly
+            is-link
             :rules="[{ required: true, message: '请选择预计归还日期' }]"
-          >
-            <template #extra>
-              <input type="date" v-model="expectReturn" :min="minDateStr" class="native-date-input" />
-            </template>
-          </van-field>
+            @click="showDatePicker = true"
+          />
           <van-field
             v-if="isReserve"
             v-model="reserveDays"
@@ -108,6 +107,18 @@
     </van-form>
 
     <van-empty v-if="!selectedDevice && !searching" description="请搜索并选择要借用的设备" />
+
+    <!-- 日期选择器 -->
+    <van-popup v-model:show="showDatePicker" position="bottom" round>
+      <van-datetime-picker
+        v-model="currentDate"
+        type="date"
+        :min-date="minDate"
+        title="选择预计归还日期"
+        @confirm="onDateConfirm"
+        @cancel="showDatePicker = false"
+      />
+    </van-popup>
   </div>
 </template>
 
@@ -140,7 +151,23 @@ const maxQty = computed(() => {
 })
 
 const today = new Date()
-const minDateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+const minDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+
+const showDatePicker = ref(false)
+const currentDate = ref([today.getFullYear().toString(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')])
+
+const formatDate = (dateArr) => {
+  if (Array.isArray(dateArr)) {
+    return `${dateArr[0]}-${String(dateArr[1]).padStart(2, '0')}-${String(dateArr[2]).padStart(2, '0')}`
+  }
+  const d = new Date(dateArr)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const onDateConfirm = (value) => {
+  expectReturn.value = formatDate(value.selectedValues || value)
+  showDatePicker.value = false
+}
 
 const onSearchDevice = (val) => {
   if (searchTimer) clearTimeout(searchTimer)
@@ -158,7 +185,7 @@ const onSearchDevice = (val) => {
           selectDevice(res.data[0])
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('设备搜索失败:', e) }
     searching.value = false
   }, 400)
 }
@@ -193,7 +220,7 @@ const fetchDeviceById = async () => {
         deviceKeyword.value = found.name
       }
     }
-  } catch (e) { /* ignore */ }
+  } catch (e) { console.error('获取设备详情失败:', e) }
 }
 
 const onSubmit = async () => {
@@ -324,15 +351,4 @@ onMounted(fetchDeviceById)
   animation: spin 0.6s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-.native-date-input {
-  border: none;
-  font-size: 14px;
-  text-align: right;
-  background: transparent;
-  color: var(--text);
-  padding: 0;
-  outline: none;
-  font-family: var(--font);
-}
 </style>

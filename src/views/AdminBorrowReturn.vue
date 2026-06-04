@@ -134,13 +134,14 @@ const fetchBorrowed = async () => {
     const res = await api.getBorrows({ status: 'approved' })
     if (res.success) borrowedRecords.value = res.data
     finishedBorrowed.value = true
-  } catch (e) {} finally { loadingBorrowed.value = false }
+  } catch (e) { console.error('获取借用列表失败:', e) } finally { loadingBorrowed.value = false }
 }
 
 // 待归还
 const returnRecords = ref([])
 const loadingReturn = ref(false)
 const finishedReturn = ref(false)
+const returning = ref(false)
 
 const isOverdueReturn = (r) => {
   if (!r.expect_return) return false
@@ -160,16 +161,19 @@ const fetchReturn = async () => {
     if (res2.success) data.push(...res2.data)
     returnRecords.value = data
     finishedReturn.value = true
-  } catch (e) {} finally { loadingReturn.value = false }
+  } catch (e) { console.error('获取归还列表失败:', e) } finally { loadingReturn.value = false }
 }
 
 const onReturn = async (id) => {
+  if (returning.value) return
+  returning.value = true
   try {
     await showConfirmDialog({ title: '确认归还', message: '确认该设备已归还？' })
     const res = await api.returnDevice(id)
     if (res.success) { showToast('归还成功'); fetchReturn() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
+  finally { returning.value = false }
 }
 
 onMounted(() => {

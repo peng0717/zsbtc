@@ -89,7 +89,7 @@ const fetchRecords = async () => {
     if (res2.success) data.push(...res2.data)
     records.value = data
     finished.value = true
-  } catch (e) {} finally { loading.value = false }
+  } catch (e) { console.error('获取归还列表失败:', e) } finally { loading.value = false }
 }
 
 const onReturn = async (id) => {
@@ -98,7 +98,7 @@ const onReturn = async (id) => {
     const res = await api.returnDevice(id)
     if (res.success) { showToast('归还成功'); fetchRecords() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 onMounted(fetchRecords)

@@ -107,7 +107,7 @@ const stopScan = async () => {
   if (html5QrCode) {
     try {
       await html5QrCode.stop()
-    } catch (e) {}
+    } catch (e) { console.error('停止扫码失败:', e) }
     html5QrCode = null
   }
   scanning.value = false
@@ -132,7 +132,7 @@ const matchDevice = async (text) => {
       matchStatus.value = 'single'
       return
     }
-  } catch (e) {}
+  } catch (e) { console.error('QR匹配失败:', e) }
 
   try {
     // 按设备名称搜索
@@ -150,7 +150,7 @@ const matchDevice = async (text) => {
       }
       return
     }
-  } catch (e) {}
+  } catch (e) { console.error('设备搜索失败:', e) }
 
   // 如果 searchDevices 无结果，尝试按 ID 精确匹配
   try {
@@ -166,7 +166,7 @@ const matchDevice = async (text) => {
         }
       }
     }
-  } catch (e) {}
+  } catch (e) { console.error('设备ID匹配失败:', e) }
 
   matchStatus.value = 'none'
 }
@@ -201,6 +201,10 @@ const manualSearch = async () => {
   matchList.value = []
   await matchDevice(text)
 }
+
+onMounted(() => {
+  startScan()
+})
 
 onUnmounted(() => {
   stopScan()

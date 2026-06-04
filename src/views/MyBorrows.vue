@@ -161,7 +161,7 @@ const onConfirm = async (id) => {
     const res = await api.confirmBorrow(id)
     if (res.success) { showToast('确认取用成功'); fetchRecords() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 const onDelete = async (id, name) => {
@@ -170,7 +170,7 @@ const onDelete = async (id, name) => {
     const res = await api.deleteBorrow(id)
     if (res.success) { showToast('删除成功'); fetchRecords() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 onMounted(fetchRecords)

@@ -76,6 +76,7 @@ const finished = ref(false)
 const showReject = ref(false)
 const rejectReason = ref('')
 const rejectId = ref(null)
+const approving = ref(false)
 
 const fetchRecords = async () => {
   loading.value = true
@@ -89,15 +90,18 @@ const fetchRecords = async () => {
     if (res2.success) data.push(...res2.data)
     records.value = data
     finished.value = true
-  } catch (e) {} finally { loading.value = false }
+  } catch (e) { console.error('获取审批列表失败:', e) } finally { loading.value = false }
 }
 
 const onApprove = async (id) => {
+  if (approving.value) return
+  approving.value = true
   try {
     const res = await api.approveBorrow(id)
     if (res.success) { showToast('审批通过'); fetchRecords() }
     else showToast(res.message)
   } catch (e) { showToast('操作失败') }
+  finally { approving.value = false }
 }
 
 const openReject = (id) => {
@@ -107,13 +111,14 @@ const openReject = (id) => {
 }
 
 const onReject = async () => {
-  if (!rejectId.value) return
+  if (!rejectId.value || approving.value) return
+  approving.value = true
   try {
     const res = await api.rejectBorrow(rejectId.value, rejectReason.value)
     if (res.success) { showToast('已拒绝'); fetchRecords() }
     else showToast(res.message)
   } catch (e) { showToast('操作失败') }
-  showReject.value = false
+  finally { approving.value = false; showReject.value = false }
 }
 
 onMounted(fetchRecords)

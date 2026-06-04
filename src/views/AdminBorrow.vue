@@ -165,7 +165,7 @@ const onSearchUser = (val) => {
           selectUser(res.data[0])
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('设备搜索失败:', e) }
   }, 400)
 }
 
@@ -190,7 +190,7 @@ const onSearchDevice = (val) => {
           selectDevice(res.data[0])
         }
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) { console.error('设备搜索失败:', e) }
   }, 400)
 }
 

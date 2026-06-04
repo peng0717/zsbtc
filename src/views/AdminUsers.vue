@@ -103,7 +103,7 @@ const fetchUsers = async () => {
     const res = await api.getUsers()
     if (res.success) users.value = res.data
     finished.value = true
-  } catch (e) {} finally { loading.value = false }
+  } catch (e) { console.error('获取用户列表失败:', e) } finally { loading.value = false }
 }
 
 const resetForm = () => {
@@ -152,7 +152,7 @@ const disableUser = async (id) => {
     const res = await api.disableUser(id)
     if (res.success) { showToast('已禁用'); fetchUsers() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 const enableUser = async (id) => {
@@ -160,7 +160,7 @@ const enableUser = async (id) => {
     const res = await api.enableUser(id)
     if (res.success) { showToast('已启用'); fetchUsers() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 onMounted(fetchUsers)

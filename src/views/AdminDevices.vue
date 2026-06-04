@@ -330,7 +330,7 @@ const retireDevice = async (id) => {
     const res = await api.retireDevice(id)
     if (res.success) { showToast('已下架'); fetchDevices() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 const maintenanceDevice = async (id) => {
@@ -338,7 +338,7 @@ const maintenanceDevice = async (id) => {
     const res = await api.maintenanceDevice(id)
     if (res.success) { showToast('已设为维修中'); fetchDevices() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 const normalDevice = async (id) => {
@@ -346,7 +346,7 @@ const normalDevice = async (id) => {
     const res = await api.normalDevice(id)
     if (res.success) { showToast('已恢复'); fetchDevices() }
     else showToast(res.message)
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 const onDeleteDevice = async (item) => {
@@ -359,7 +359,7 @@ const onDeleteDevice = async (item) => {
     } else {
       showToast(res.message)
     }
-  } catch (e) {}
+  } catch (e) { showToast('操作失败') }
 }
 
 // ========== 扫码 & 生成二维码 ==========
@@ -392,7 +392,7 @@ const openQrScanner = async () => {
 
 const closeScanner = async () => {
   if (html5QrScanner) {
-    try { await html5QrScanner.stop() } catch (e) {}
+    try { await html5QrScanner.stop() } catch (e) { /* 忽略停止扫描错误 */ }
     html5QrScanner = null
   }
   showScanner.value = false
@@ -400,7 +400,7 @@ const closeScanner = async () => {
 
 const onScannerClosed = () => {
   if (html5QrScanner) {
-    try { html5QrScanner.stop() } catch (e) {}
+    try { html5QrScanner.stop() } catch (e) { /* 忽略停止扫描错误 */ }
     html5QrScanner = null
   }
 }
@@ -451,7 +451,7 @@ onMounted(fetchDevices)
 
 onUnmounted(() => {
   if (html5QrScanner) {
-    try { html5QrScanner.stop() } catch (e) {}
+    try { html5QrScanner.stop() } catch (e) { /* 忽略停止扫描错误 */ }
     html5QrScanner = null
   }
 })
