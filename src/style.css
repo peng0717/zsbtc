@@ -202,19 +202,20 @@ body {
 
 /* === Toast Loading 修复 === */
 .van-toast--loading {
-  background: var(--primary);
+  background: var(--surface);
   border-radius: 12px;
   padding: 16px 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
 }
 .van-toast--loading .van-toast__text {
-  color: #fff !important;
+  color: var(--primary) !important;
   font-size: 14px;
   font-weight: 500;
   margin-top: 8px;
 }
 .van-toast--loading .van-loading__spinner,
 .van-toast--loading .van-loading__circular {
-  color: #fff !important;
+  color: var(--primary) !important;
 }
 
 /* === 公共工具类 === */
