@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const router = express.Router();
 const { get, all, run, getNow } = require('../db');
 const { authMiddleware, requireAdmin } = require('../app-middleware');
+const { auditLog } = require('../db');
 
 // GET /api/devices/search
 router.get('/search', authMiddleware, async (req, res) => {
@@ -51,6 +52,11 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
       [name, model || '', category || '', t, t, description || '', image || '', finalQrCode, 'normal', now]
     );
     const deviceId = result.lastInsertRowid;
+    await auditLog({
+      userId: req.user.id, username: req.user.username,
+      action: '添加设备', targetType: 'device', targetId: parseInt(deviceId),
+      detail: `添加设备 ${name}，数量: ${t}，分类: ${category || ''}`
+    });
     return res.json({ success: true, message: '添加成功', data: { id: deviceId, qr_code: finalQrCode } });
   }
 
@@ -62,6 +68,11 @@ router.post('/', authMiddleware, requireAdmin, async (req, res) => {
   const deviceId = result.lastInsertRowid;
   finalQrCode = Buffer.from(`DEV-${deviceId}-${Date.now()}`).toString('base64');
   await run('UPDATE devices SET qr_code = ? WHERE id = ?', [finalQrCode, deviceId]);
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '添加设备', targetType: 'device', targetId: parseInt(deviceId),
+    detail: `添加设备 ${name}，数量: ${t}，分类: ${category || ''}`
+  });
   return res.json({ success: true, message: '添加成功', data: { id: deviceId, qr_code: finalQrCode } });
 });
 
@@ -87,36 +98,56 @@ router.put('/:id', authMiddleware, requireAdmin, async (req, res) => {
     'UPDATE devices SET name = ?, model = ?, category = ?, total = ?, available = ?, description = ?, image = ?, qr_code = ? WHERE id = ?',
     [name, model || '', category || '', t, newAvailable, description || '', image || '', finalQrCode, req.params.id]
   );
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '编辑设备', targetType: 'device', targetId: parseInt(req.params.id),
+    detail: `编辑设备 #${req.params.id}，名称: ${name}，总数: ${t}`
+  });
   return res.json({ success: true, message: '编辑成功' });
 });
 
 // PATCH /api/devices/:id/retire
 router.patch('/:id/retire', authMiddleware, requireAdmin, async (req, res) => {
-  const device = await get('SELECT id FROM devices WHERE id = ?', [req.params.id]);
+  const device = await get('SELECT id, name FROM devices WHERE id = ?', [req.params.id]);
   if (!device) {
     return res.json({ success: false, message: '设备不存在' });
   }
   await run("UPDATE devices SET status = 'retired' WHERE id = ?", [req.params.id]);
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '下架设备', targetType: 'device', targetId: parseInt(req.params.id),
+    detail: `下架设备 ${device.name}`
+  });
   return res.json({ success: true, message: '已下架' });
 });
 
 // PATCH /api/devices/:id/maintenance
 router.patch('/:id/maintenance', authMiddleware, requireAdmin, async (req, res) => {
-  const device = await get('SELECT id FROM devices WHERE id = ?', [req.params.id]);
+  const device = await get('SELECT id, name FROM devices WHERE id = ?', [req.params.id]);
   if (!device) {
     return res.json({ success: false, message: '设备不存在' });
   }
   await run("UPDATE devices SET status = 'maintenance' WHERE id = ?", [req.params.id]);
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '设备报修', targetType: 'device', targetId: parseInt(req.params.id),
+    detail: `设备 ${device.name} 设为维修中`
+  });
   return res.json({ success: true, message: '已设为维修中' });
 });
 
 // PATCH /api/devices/:id/normal
 router.patch('/:id/normal', authMiddleware, requireAdmin, async (req, res) => {
-  const device = await get('SELECT id FROM devices WHERE id = ?', [req.params.id]);
+  const device = await get('SELECT id, name FROM devices WHERE id = ?', [req.params.id]);
   if (!device) {
     return res.json({ success: false, message: '设备不存在' });
   }
   await run("UPDATE devices SET status = 'normal' WHERE id = ?", [req.params.id]);
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '恢复设备', targetType: 'device', targetId: parseInt(req.params.id),
+    detail: `恢复设备 ${device.name} 为正常`
+  });
   return res.json({ success: true, message: '已恢复' });
 });
 
@@ -151,7 +182,60 @@ router.delete('/:id', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: false, message: '设备不存在' });
   }
   await run("UPDATE devices SET status = 'deleted' WHERE id = ?", [req.params.id]);
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '删除设备', targetType: 'device', targetId: parseInt(req.params.id),
+    detail: `删除设备 ${device.name}`
+  });
   return res.json({ success: true, message: '已删除' });
+});
+
+// ===== 批量操作 =====
+// PATCH /api/devices/batch
+router.patch('/batch', authMiddleware, requireAdmin, async (req, res) => {
+  const { ids, status, remark } = req.body;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return res.json({ success: false, message: '请提供设备ID列表' });
+  }
+  const validStatuses = ['retired', 'maintenance', 'normal'];
+  if (!validStatuses.includes(status)) {
+    return res.json({ success: false, message: '状态值不合法' });
+  }
+  if (ids.length > 50) {
+    return res.json({ success: false, message: '单次批量操作不超过50台设备' });
+  }
+
+  const placeholders = ids.map(() => '?').join(',');
+  const result = await run(
+    `UPDATE devices SET status = ? WHERE id IN (${placeholders})`,
+    [status, ...ids]
+  );
+
+  const actionMap = { retired: '批量下架', maintenance: '批量报修', normal: '批量恢复' };
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: actionMap[status], targetType: 'device', targetId: null,
+    detail: `${actionMap[status]} ${ids.length} 台设备${remark ? '，备注: ' + remark : ''}`
+  });
+
+  return res.json({ success: true, message: `成功更新 ${result.rowsAffected} 台设备状态为 ${status}` });
+});
+
+// GET /api/devices/:id/history
+router.get('/:id/history', authMiddleware, async (req, res) => {
+  const device = await get('SELECT * FROM devices WHERE id = ?', [req.params.id]);
+  if (!device) {
+    return res.json({ success: false, message: '设备不存在' });
+  }
+  const records = await all(
+    `SELECT br.*, u.name AS borrower_name 
+     FROM borrow_records br 
+     LEFT JOIN users u ON br.user_id = u.id 
+     WHERE br.device_id = ? 
+     ORDER BY br.id DESC`,
+    [req.params.id]
+  );
+  return res.json({ success: true, data: records });
 });
 
 module.exports = router;

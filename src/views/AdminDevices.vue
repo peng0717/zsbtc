@@ -154,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { showToast, showConfirmDialog, showLoadingToast, closeToast } from 'vant'
 import { api } from '../api.js'
@@ -163,12 +163,9 @@ import { getImgUrl, placeholderImg } from '../utils/image.js'
 
 const route = useRoute()
 const tabbarActive = ref(0)
-watch(() => route.path, (val) => {
-  if (val === '/admin/devices') tabbarActive.value = 0
-  else if (val === '/admin/users') tabbarActive.value = 1
-  else if (val === '/admin/approval') tabbarActive.value = 2
-  else if (val === '/admin/borrow-return') tabbarActive.value = 3
-}, { immediate: true })
+useTabbarWatch(tabbarActive, {
+  '/admin/devices': 0, '/admin/users': 1, '/admin/approval': 2, '/admin/borrow-return': 3, '/admin/borrowed': 4, '/admin/return': 5
+})
 
 const devices = ref([])
 const showAdd = ref(false)

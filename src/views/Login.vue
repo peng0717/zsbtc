@@ -85,11 +85,12 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { api } from '../api.js'
 import { useUserStore } from '../stores/user.js'
+import { validatePassword } from '../utils/password.js'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -149,14 +150,6 @@ const doLogin = async () => {
 const onLogin = async () => {
   const result = await doLogin()
   if (result.success) router.push('/home')
-}
-
-const validatePassword = (pwd) => {
-  if (pwd.length < 8) return '密码长度不能少于8位'
-  if (!/[a-z]/.test(pwd)) return '密码必须包含小写字母'
-  if (!/[A-Z]/.test(pwd)) return '密码必须包含大写字母'
-  if (!/[0-9]/.test(pwd)) return '密码必须包含数字'
-  return null
 }
 
 const onRegister = async () => {

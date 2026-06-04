@@ -53,4 +53,12 @@ function getNow() {
   return beijing.toISOString().replace('T', ' ').substring(0, 19);
 }
 
-module.exports = { run, get, all, getNow };
+async function auditLog({ userId, username, action, targetType, targetId, detail }) {
+  const now = getNow();
+  await run(
+    'INSERT INTO audit_logs (user_id, username, action, target_type, target_id, detail, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [userId || null, username || '', action, targetType || '', targetId || null, detail || '', now]
+  );
+}
+
+module.exports = { run, get, all, getNow, auditLog };

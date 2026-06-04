@@ -115,6 +115,9 @@ async function initDB() {
   // 为已有数据库补充 qr_code 字段
   try { await run('ALTER TABLE devices ADD COLUMN qr_code TEXT'); } catch (_) {}
 
+  // 为已有数据库补充 overdue_days 字段
+  try { await run('ALTER TABLE borrow_records ADD COLUMN overdue_days INTEGER DEFAULT 0'); } catch (_) {}
+
   await run(`CREATE TABLE IF NOT EXISTS borrow_records (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id INTEGER NOT NULL,
@@ -138,6 +141,18 @@ async function initDB() {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     token_hash TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // 操作审计日志表
+  await run(`CREATE TABLE IF NOT EXISTS audit_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    username TEXT,
+    action TEXT NOT NULL,
+    target_type TEXT,
+    target_id INTEGER,
+    detail TEXT,
+    created_at TEXT NOT NULL
   )`);
 
   // 种子数据：管理员（从环境变量读取，未配置则跳过）

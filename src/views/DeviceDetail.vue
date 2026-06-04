@@ -60,11 +60,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { api } from '../api.js'
 import { useUserStore } from '../stores/user.js'
+import { placeholderImg } from '../utils/image.js'
 
 const route = useRoute()
 const router = useRouter()
 const device = ref({})
-const placeholderImg = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjI0MCIgZmlsbD0iI2YwZjJmNiIvPjx0ZXh0IHg9IjIwMCIgeT0iMTI0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYjBjMGQwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNiI+5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
+
 
 const canBorrow = computed(() => {
   if (device.value.status !== 'normal') return false

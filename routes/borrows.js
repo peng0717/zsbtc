@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { get, all, run, getNow } = require('../db');
 const { authMiddleware, requireAdmin } = require('../app-middleware');
+const { auditLog } = require('../db');
 
 // POST /api/borrows
 router.post('/', authMiddleware, async (req, res) => {
@@ -90,6 +91,7 @@ router.post('/', authMiddleware, async (req, res) => {
 // GET /api/borrows
 router.get('/', authMiddleware, async (req, res) => {
   let sql = 'SELECT br.*, u.name AS borrower_name FROM borrow_records br LEFT JOIN users u ON br.user_id = u.id';
+  let countSql = 'SELECT COUNT(*) as total FROM borrow_records br';
   let params = [];
   let conditions = [];
 
@@ -119,11 +121,30 @@ router.get('/', authMiddleware, async (req, res) => {
     params.push(getNow());
   }
 
-  if (conditions.length > 0) {
-    sql += ' WHERE ' + conditions.join(' AND ');
+  // 自动取消过期预约（超过预期归还日期的 reserved 记录）
+  const nowForExpiry = getNow();
+  const expiredReservations = await all(
+    "SELECT id FROM borrow_records WHERE status = 'reserved' AND expect_return IS NOT NULL AND expect_return != '' AND expect_return < ?",
+    [nowForExpiry]
+  );
+  for (const r of expiredReservations) {
+    await run("UPDATE borrow_records SET status = 'rejected', reject_reason = ? WHERE id = ?", ['预约已过期，系统自动取消', r.id]);
   }
 
-  sql += ' ORDER BY br.id DESC';
+  const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
+
+  // 分页
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize) || 20));
+  const offset = (page - 1) * pageSize;
+
+  // 获取总数
+  const countParams = [...params];
+  const countResult = await get(countSql + whereClause, countParams);
+  const total = countResult?.total || 0;
+
+  sql += whereClause + ' ORDER BY br.id DESC LIMIT ? OFFSET ?';
+  params.push(pageSize, offset);
 
   const records = await all(sql, params);
 
@@ -134,7 +155,7 @@ router.get('/', authMiddleware, async (req, res) => {
     is_overdue: !!(r.status === 'borrowed' || r.status === 'approved') && r.expect_return && r.expect_return < now
   }));
 
-  return res.json({ success: true, data: enriched });
+  return res.json({ success: true, data: enriched, total, page, pageSize, totalPages: Math.ceil(total / pageSize) });
 });
 
 // PUT /api/borrows/:id/approve
@@ -147,6 +168,11 @@ router.put('/:id/approve', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: false, message: '该记录当前状态不可审批' });
   }
   await run("UPDATE borrow_records SET status = 'approved', approver = ? WHERE id = ?", [req.user.username, req.params.id]);
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '审批通过借用', targetType: 'borrow_record', targetId: parseInt(req.params.id),
+    detail: `审批通过借用记录 #${req.params.id}，设备: ${record.device_name}，借用人: ${record.username}`
+  });
   return res.json({ success: true, message: '审批通过' });
 });
 
@@ -166,6 +192,12 @@ router.put('/:id/reject', authMiddleware, requireAdmin, async (req, res) => {
   if (record.type !== 'reserve') {
     await run('UPDATE devices SET available = available + ? WHERE id = ?', [record.qty, record.device_id]);
   }
+
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '拒绝借用', targetType: 'borrow_record', targetId: parseInt(req.params.id),
+    detail: `拒绝借用记录 #${req.params.id}，原因: ${reason || '无'}`
+  });
 
   return res.json({ success: true, message: '已拒绝' });
 });
@@ -188,6 +220,11 @@ router.put('/:id/confirm', authMiddleware, async (req, res) => {
   }
   await run('UPDATE devices SET available = available - ? WHERE id = ?', [record.qty, record.device_id]);
   await run("UPDATE borrow_records SET status = 'borrowed' WHERE id = ?", [req.params.id]);
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '确认取用', targetType: 'borrow_record', targetId: parseInt(req.params.id),
+    detail: `确认取用设备 ${record.device_name}`
+  });
   return res.json({ success: true, message: '确认取用成功' });
 });
 
@@ -201,8 +238,28 @@ router.put('/:id/return', authMiddleware, requireAdmin, async (req, res) => {
     return res.json({ success: false, message: '该记录当前状态不可归还' });
   }
   const now = getNow();
-  await run("UPDATE borrow_records SET status = 'returned', actual_return = ? WHERE id = ?", [now, req.params.id]);
+  
+  // 计算逾期天数
+  let overdueDays = 0;
+  if (record.expect_return && record.expect_return < now.substring(0, 10)) {
+    const expect = new Date(record.expect_return);
+    const actual = new Date(now.substring(0, 10));
+    overdueDays = Math.max(0, Math.floor((actual - expect) / (1000 * 60 * 60 * 24)));
+  }
+  
+  await run(
+    "UPDATE borrow_records SET status = 'returned', actual_return = ?, overdue_days = ? WHERE id = ?",
+    [now, overdueDays, req.params.id]
+  );
   await run('UPDATE devices SET available = available + ? WHERE id = ?', [record.qty, record.device_id]);
+
+  await auditLog({
+    userId: req.user.id, username: req.user.username,
+    action: '归还设备', targetType: 'borrow_record', targetId: parseInt(req.params.id),
+    detail: overdueDays > 0
+      ? `归还设备 ${record.device_name}，逾期 ${overdueDays} 天`
+      : `归还设备 ${record.device_name}`
+  });
 
   return res.json({ success: true, message: '归还成功' });
 });

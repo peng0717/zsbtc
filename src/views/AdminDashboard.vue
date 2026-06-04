@@ -65,18 +65,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api.js'
 
 const route = useRoute()
 const tabbarActive = ref(0)
-watch(() => route.path, (val) => {
-  if (val === '/admin/devices') tabbarActive.value = 0
-  else if (val === '/admin/users') tabbarActive.value = 1
-  else if (val === '/admin/approval') tabbarActive.value = 2
-  else if (val === '/admin/borrow-return') tabbarActive.value = 3
-}, { immediate: true })
+useTabbarWatch(tabbarActive, {
+  '/admin/dashboard': 0
+})
 
 const stats = ref({
   totalDevices: 0,

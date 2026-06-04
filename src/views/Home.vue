@@ -95,17 +95,20 @@ import { useRouter, useRoute } from 'vue-router'
 import { showConfirmDialog, showToast } from 'vant'
 import { api } from '../api.js'
 import { useUserStore } from '../stores/user.js'
+import { getImgUrl, placeholderImg } from '../utils/image.js'
+import { validatePassword } from '../utils/password.js'
+import { useTabbarWatch } from '../utils/useTabbar.js'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
 const tabbarActive = ref(0)
-watch(() => route.path, (val) => {
-  if (val === '/home') tabbarActive.value = 0
-  else if (val === '/my-borrows') tabbarActive.value = 1
-  else if (val.startsWith('/admin')) tabbarActive.value = 2
-}, { immediate: true })
+useTabbarWatch(tabbarActive, {
+  '/home': 0,
+  '/my-borrows': 1,
+  '/admin': 2
+})
 
 // 个人借用摘要
 const summary = ref({ borrowing: 0, toReturn: 0, overdue: 0 })
@@ -143,15 +146,6 @@ const filteredDevices = computed(() => {
   }
   return list
 })
-
-const placeholderImg = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjZjBmMmY2Ii8+PHRleHQgeD0iMzAiIHk9IjM0IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjYjBjMGQwIiBmb250LWZhbWlseT0ic2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCI+5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
-
-const host = window.location.hostname
-const getImgUrl = (img) => {
-  if (!img) return ''
-  if (img.startsWith('http') || img.startsWith('data:')) return img
-  return `http://${host}:3001${img}`
-}
 
 const statusText = (s) => ({ normal: '正常', maintenance: '维修中', retired: '已下架' }[s] || s)
 
@@ -212,14 +206,6 @@ const pwdCheck = computed(() => ({
   upper: /[A-Z]/.test(profileForm.password),
   digit: /[0-9]/.test(profileForm.password),
 }))
-
-const validatePassword = (pwd) => {
-  if (pwd.length < 8) return '密码长度不能少于8位'
-  if (!/[a-z]/.test(pwd)) return '密码必须包含小写字母'
-  if (!/[A-Z]/.test(pwd)) return '密码必须包含大写字母'
-  if (!/[0-9]/.test(pwd)) return '密码必须包含数字'
-  return null
-}
 
 const onUpdateProfile = async () => {
   if (!profileForm.name) {

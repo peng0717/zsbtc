@@ -90,20 +90,22 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { showToast, showConfirmDialog } from 'vant'
 import { api } from '../api.js'
 import { useUserStore } from '../stores/user.js'
+import { useTabbarWatch } from '../utils/useTabbar.js'
 
 const route = useRoute()
 const userStore = useUserStore()
 
 const tabbarActive = ref(1)
-watch(() => route.path, (val) => {
-  if (val === '/home') tabbarActive.value = 0
-  else if (val === '/my-borrows') tabbarActive.value = 1
-}, { immediate: true })
+useTabbarWatch(tabbarActive, {
+  '/home': 0,
+  '/my-borrows': 1,
+  '/admin': 2
+})
 
 const activeTab = ref('all')
 const records = ref([])

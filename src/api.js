@@ -35,6 +35,8 @@ export const api = {
   addDevice: (data) => http.post('/devices', data),
   updateDevice: (id, data) => http.put(`/devices/${id}`, data),
   retireDevice: (id) => http.patch(`/devices/${id}/retire`),
+  batchUpdateDevices: (ids, status, remark) => http.patch('/devices/batch', { ids, status, remark }),
+  getDeviceHistory: (id) => http.get(`/devices/${id}/history`),
   maintenanceDevice: (id) => http.patch(`/devices/${id}/maintenance`),
   normalDevice: (id) => http.patch(`/devices/${id}/normal`),
   deleteDevice: (id) => http.delete(`/devices/${id}`),
@@ -66,4 +68,9 @@ export const api = {
   exportDevices: () => http.get('/export/devices', { responseType: 'blob' }),
   exportBorrows: (params) => http.get('/export/borrows', { params, responseType: 'blob' }),
 
+  // 审计日志
+  getAuditLogs: (params) => http.get('/admin/audit-logs', { params }),
+
+  // 密码重置
+  resetPassword: (data) => http.post('/auth/reset-password', data),
 }

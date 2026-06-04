@@ -41,6 +41,8 @@
       <div class="dialog-form">
         <van-field v-model="form.username" label="学工号" placeholder="请输入" />
         <van-field v-model="form.name" label="姓名" placeholder="请输入" />
+        <van-field v-model="form.password" label="密码" placeholder="请输入" type="password" />
+        <van-field v-model="form.confirmPassword" label="确认密码" placeholder="请再次输入" type="password" />
         <van-field v-model="form.role" label="角色" readonly is-link placeholder="请选择" @click="showRoleAdd = true" />
         <van-field v-model="form.phone" label="电话" placeholder="可选" />
       </div>
@@ -72,19 +74,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { showToast } from 'vant'
 import { api } from '../api.js'
 
 const route = useRoute()
 const tabbarActive = ref(1)
-watch(() => route.path, (val) => {
-  if (val === '/admin/devices') tabbarActive.value = 0
-  else if (val === '/admin/users') tabbarActive.value = 1
-  else if (val === '/admin/approval') tabbarActive.value = 2
-  else if (val === '/admin/borrow-return') tabbarActive.value = 3
-}, { immediate: true })
+useTabbarWatch(tabbarActive, {
+  '/admin/devices': 0, '/admin/users': 1, '/admin/approval': 2, '/admin/borrow-return': 3, '/admin/borrowed': 4, '/admin/return': 5
+})
 
 const users = ref([])
 const loading = ref(false)
@@ -95,7 +94,7 @@ const showRoleAdd = ref(false)
 const showRoleEdit = ref(false)
 const roles = ['学生', '教师', '管理员']
 
-const form = ref({ username: '', name: '', role: '学生', phone: '' })
+const form = ref({ username: '', name: '', password: '', confirmPassword: '', role: '学生', phone: '' })
 const editForm = ref({ id: '', name: '', role: '', phone: '' })
 
 const fetchUsers = async () => {
@@ -108,10 +107,22 @@ const fetchUsers = async () => {
 }
 
 const resetForm = () => {
-  form.value = { username: '', name: '', role: '学生', phone: '' }
+  form.value = { username: '', name: '', password: '', confirmPassword: '', role: '学生', phone: '' }
 }
 
 const onAdd = async () => {
+  if (!form.value.username || !form.value.name) {
+    showToast('学工号和姓名不能为空')
+    return
+  }
+  if (!form.value.password) {
+    showToast('密码不能为空')
+    return
+  }
+  if (form.value.password !== form.value.confirmPassword) {
+    showToast('两次输入的密码不一致')
+    return
+  }
   try {
     const res = await api.addUser({ ...form.value })
     if (res.success) { showToast('添加成功'); resetForm(); fetchUsers() }
