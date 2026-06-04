@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-devices">
-    <van-nav-bar title="设备管理" left-text="返回" left-arrow @click-left="$router.push('/home')">
+    <van-nav-bar title="设备管理" left-text="返回" left-arrow @click-left="$router.back()">
       <template #right>
         <van-button size="small" type="default" @click="exportDevices">导出</van-button>
         <van-button size="small" type="primary" @click="showAdd = true" style="margin-left:6px">添加</van-button>
@@ -106,6 +106,7 @@
           <div class="qr-input-row">
             <input v-model="editManualQrInput" class="qr-manual-input" placeholder="手动输入二维码编号" @keyup.enter="addEditManualQr" />
             <van-button size="small" type="default" @click="addEditManualQr">添加</van-button>
+            <van-icon name="scan" size="24" class="qr-scan-btn" @click="openEditQrScanner" />
           </div>
         </div>
         <div class="image-field">
@@ -364,9 +365,11 @@ const onDeleteDevice = async (item) => {
 // ========== 扫码 & 生成二维码 ==========
 
 const showScanner = ref(false)
+const scanMode = ref('add') // 'add' | 'edit'
 let html5QrScanner = null
 
 const openQrScanner = async () => {
+  scanMode.value = 'add'
   showScanner.value = true
   await nextTick()
   try {
@@ -375,11 +378,37 @@ const openQrScanner = async () => {
       { facingMode: 'environment' },
       { fps: 30, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0, disableFlip: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
       (decodedText) => {
-        if (!form.value.qr_codes.includes(decodedText)) {
-          form.value.qr_codes.push(decodedText)
+        const target = scanMode.value === 'edit' ? editForm.value : form.value
+        if (!target.qr_codes) target.qr_codes = []
+        if (!target.qr_codes.includes(decodedText)) {
+          target.qr_codes.push(decodedText)
           showToast('已扫码')
         }
-        // 继续扫描，不关闭——支持连续扫多个二维码
+      },
+      () => {}
+    )
+  } catch (e) {
+    showToast('无法启动摄像头，请检查权限或手动输入')
+    showScanner.value = false
+  }
+}
+
+const openEditQrScanner = async () => {
+  scanMode.value = 'edit'
+  showScanner.value = true
+  await nextTick()
+  try {
+    html5QrScanner = new Html5Qrcode('admin-qr-reader')
+    await html5QrScanner.start(
+      { facingMode: 'environment' },
+      { fps: 30, qrbox: { width: 200, height: 200 }, aspectRatio: 1.0, disableFlip: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } },
+      (decodedText) => {
+        const target = editForm.value
+        if (!target.qr_codes) target.qr_codes = []
+        if (!target.qr_codes.includes(decodedText)) {
+          target.qr_codes.push(decodedText)
+          showToast('已扫码')
+        }
       },
       () => {}
     )
@@ -527,7 +556,7 @@ onUnmounted(() => {
   border-radius: 0;
 }
 
-.dialog-form { padding: 4px 0; }
+.dialog-form { padding: 0 4px 8px; }
 
 .image-field {
   padding: 10px 16px;
@@ -651,6 +680,13 @@ onUnmounted(() => {
 
 .qr-manual-input:focus { border-color: var(--primary); }
 
+.qr-scan-btn {
+  color: var(--primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.qr-scan-btn:active { opacity: 0.7; }
+
 .qr-actions {
   display: flex;
   gap: 10px;
@@ -689,20 +725,6 @@ onUnmounted(() => {
   font-size: 13px;
   color: #999;
   flex-shrink: 0;
-}
-
-/* 防止弹窗内容溢出，确保按钮固定在底部 */
-:deep(.van-dialog) {
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-}
-:deep(.van-dialog__content) {
-  overflow-y: auto;
-  max-height: 65vh;
-}
-.dialog-form {
-  overflow-y: auto;
 }
 </style>
 （内容由AI生成，仅供参考）

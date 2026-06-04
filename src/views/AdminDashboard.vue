@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-dashboard">
-    <van-nav-bar title="数据看板" left-text="返回" left-arrow @click-left="$router.push('/home')" />
+    <van-nav-bar title="数据看板" left-text="返回" left-arrow @click-left="$router.back()" />
 
     <div class="dash-cards">
       <div class="dash-card">

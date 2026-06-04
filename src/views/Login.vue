@@ -349,10 +349,18 @@ const onRegister = async () => {
   text-align: center;
 }
 
-.register-form { padding: 8px 0; }
+.register-form {
+  padding: 0 4px 8px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.register-form .input-group {
+  margin-bottom: 12px;
+}
 .register-form .input-field {
-  border-width: 2px;
-  border-color: #c8ccd6;
+  height: 44px;
+  border-width: 1.5px;
+  border-color: var(--border);
 }
 .register-form .input-field:focus {
   border-color: var(--primary);

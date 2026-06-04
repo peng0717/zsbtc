@@ -182,10 +182,24 @@ body {
 }
 
 /* === 弹窗 === */
+.van-dialog {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+}
 .van-dialog__header {
   font-weight: 600;
   font-size: 17px;
   padding-top: 20px;
+  flex-shrink: 0;
+}
+.van-dialog__content {
+  overflow-y: auto;
+  max-height: 65vh;
+  -webkit-overflow-scrolling: touch;
+}
+.van-dialog__footer {
+  flex-shrink: 0;
 }
 .van-dialog__content .van-field {
   background: var(--bg);

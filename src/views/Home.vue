@@ -365,7 +365,11 @@ onMounted(() => {
 
 .device-arrow { color: #c0c4cc; flex-shrink: 0; }
 
-.profile-form { padding: 4px 0; }
+.profile-form {
+  padding: 0 4px 8px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
 .pwd-strength {
   display: flex;

@@ -234,6 +234,6 @@ onMounted(fetchUsers)
 .act-disable { border-color: var(--danger); color: var(--danger); }
 .act-enable  { border-color: var(--success); color: var(--success); }
 
-.dialog-form { padding: 4px 0; }
+.dialog-form { padding: 0 4px 8px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
 </style>
 （内容由AI生成，仅供参考）
