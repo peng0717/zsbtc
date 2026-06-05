@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-return">
-    <van-nav-bar title="归还管理" left-text="返回" left-arrow @click-left="$router.back()">
+    <van-nav-bar title="归还管理" left-text="返回" left-arrow @click-left="$router.push('/home')">
       <template #right>
         <van-icon name="scan" size="22" @click="$router.push('/scan')" class="nav-scan" />
       </template>

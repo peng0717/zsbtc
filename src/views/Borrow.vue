@@ -1,6 +1,6 @@
 <template>
   <div class="page-container">
-    <van-nav-bar :title="isReserve ? '预约借用' : '申请借用'" left-text="返回" left-arrow @click-left="$router.back()" />
+    <van-nav-bar :title="isReserve ? '预约借用' : '申请借用'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
     <!-- 设备搜索 -->
     <div class="borrow-search">

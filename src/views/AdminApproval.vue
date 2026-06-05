@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-approval">
-    <van-nav-bar title="审批管理" left-text="返回" left-arrow @click-left="$router.back()" />
+    <van-nav-bar title="审批管理" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
     <van-list v-model:loading="loading" :finished="finished" @load="fetchRecords">
       <div v-for="r in records" :key="r.id" class="approval-card">

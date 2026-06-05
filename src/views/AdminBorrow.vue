@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-borrow">
-    <van-nav-bar title="辅助登记" left-text="返回" left-arrow @click-left="$router.back()" />
+    <van-nav-bar title="辅助登记" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
     <div class="borrow-form-wrap">
       <!-- 学工号搜索 -->

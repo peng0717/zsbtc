@@ -1,6 +1,6 @@
 <template>
   <div class="page-container my-borrows">
-    <van-nav-bar :title="userStore.isAdmin ? '借出中' : '借出列表'" left-text="返回" left-arrow @click-left="$router.back()" />
+    <van-nav-bar :title="userStore.isAdmin ? '借出中' : '借出列表'" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
     <van-tabs v-if="!userStore.isAdmin" v-model:active="activeTab" @change="onTabChange" sticky color="#1e5dc9" title-active-color="#1e5dc9">
       <van-tab v-for="t in tabs" :key="t.value" :title="t.label" :name="t.value" />

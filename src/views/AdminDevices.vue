@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-devices">
-    <van-nav-bar title="设备管理" left-text="返回" left-arrow @click-left="$router.back()">
+    <van-nav-bar title="设备管理" left-text="返回" left-arrow @click-left="$router.push('/home')">
       <template #right>
         <van-button size="small" type="default" @click="exportDevices">导出</van-button>
         <van-button size="small" type="primary" @click="showAdd = true" style="margin-left:6px">添加</van-button>

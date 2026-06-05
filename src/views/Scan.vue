@@ -72,7 +72,7 @@ let html5QrCode = null
 
 const goBack = () => {
   stopScan()
-  router.back()
+  router.push('/home')
 }
 
 const startScan = async () => {

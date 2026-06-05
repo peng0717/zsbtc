@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-users">
-    <van-nav-bar title="用户管理" left-text="返回" left-arrow @click-left="$router.back()">
+    <van-nav-bar title="用户管理" left-text="返回" left-arrow @click-left="$router.push('/home')">
       <template #right>
         <van-button size="small" type="primary" @click="showAdd = true">添加</van-button>
       </template>

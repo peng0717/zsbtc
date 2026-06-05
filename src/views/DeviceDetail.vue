@@ -1,6 +1,6 @@
 <template>
   <div class="page-container">
-    <van-nav-bar title="设备详情" left-text="返回" left-arrow @click-left="$router.back()" />
+    <van-nav-bar title="设备详情" left-text="返回" left-arrow @click-left="$router.push('/home')" />
 
     <div class="detail-hero">
       <img :src="device.image || placeholderImg" class="detail-img" alt="设备图片" />

@@ -1,6 +1,6 @@
 <template>
   <div class="page-container admin-borrow-return">
-    <van-nav-bar title="借还管理" left-text="返回" left-arrow @click-left="$router.back()">
+    <van-nav-bar title="借还管理" left-text="返回" left-arrow @click-left="$router.push('/home')">
       <template #right>
         <van-button size="small" type="default" @click="exportBorrows">导出</van-button>
         <van-icon name="scan" size="22" @click="$router.push('/scan')" class="nav-scan" style="margin-left:6px" />
